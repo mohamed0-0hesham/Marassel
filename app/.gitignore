@@ -1,0 +1,61 @@
+# =========================
+# Build output
+# =========================
+/build/
+/app/build/
+
+# =========================
+# Gradle
+# =========================
+.gradle/
+local.properties
+
+# =========================
+# Android Studio / IntelliJ
+# =========================
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Keystore files
+# =========================
+*.jks
+*.keystore
+
+# =========================
+# External native build
+# =========================
+.externalNativeBuild/
+.cxx/
+
+# =========================
+# Firebase / Google services
+# (Uncomment if needed)
+# =========================
+google-services.json
+
+# =========================
+# Fastlane (optional)
+# =========================
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# =========================
+# Kotlin / Java
+# =========================
+*.class
