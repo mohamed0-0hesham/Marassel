@@ -1,34 +1,50 @@
-# Gradle files
-.gradle/
-build/
-
-# Local configuration file (sdk path, etc)
-local.properties
-
-# Log/OS Files
-*.log
-
-# Android Studio generated files and folders
-captures/
-.externalNativeBuild/
-.cxx/
-*.aab
-*.apk
-output-metadata.json
-
-# IntelliJ
+# ── Android ───────────────────────────────────────────────────────────────────
 *.iml
-.idea/
-misc.xml
-deploymentTargetDropDown.xml
-render.experimental.xml
+.gradle/
+local.properties
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+*.ap_
 
-# Keystore files
-*.jks
-*.keystore
+# ── Android Studio ────────────────────────────────────────────────────────────
+/.idea/
+*.iws
+*.ipr
 
-# Google Services (e.g. APIs or Firebase)
+# ── SECURITY — Never commit these ─────────────────────────────────────────────
+# Firebase — contains API keys and project config
 google-services.json
 
-# Android Profiling
-*.hprof
+# Signing keystores
+*.jks
+*.keystore
+keystore.properties
+release.keystore
+debug.keystore
+
+# Environment / secrets files
+*.env
+secrets.properties
+local.defaults.properties
+
+# ── Build outputs ─────────────────────────────────────────────────────────────
+app/build/
+**/build/
+
+# ── Kotlin ────────────────────────────────────────────────────────────────────
+*.class
+
+# ── Gradle ────────────────────────────────────────────────────────────────────
+.gradle
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.AppleDouble
+.LSOverride
