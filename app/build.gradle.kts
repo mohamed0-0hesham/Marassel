@@ -86,6 +86,7 @@ dependencies {
     // Compose (BOM manages all versions within the bundle)
     implementation(platform(libs.compose.bom))
     implementation(libs.bundles.compose)
+    implementation(libs.google.googleid)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 
@@ -100,6 +101,11 @@ dependencies {
     // Firebase (BOM manages all Firebase versions)
     implementation(platform(libs.firebase.bom))
     implementation(libs.bundles.firebase)
+
+    // Credential Manager — Google Sign-In
+    implementation(libs.credentials)
+    implementation(libs.credentials.play.services.auth)
+    implementation(libs.googleid)
 
     // WorkManager
     implementation(libs.work.runtime.ktx)
