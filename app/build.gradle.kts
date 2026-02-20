@@ -116,6 +116,9 @@ dependencies {
     // Kotlin Serialization
     implementation(libs.kotlinx.serialization.json)
 
+    // UI Controller
+    implementation(libs.accompanist.systemuicontroller)
+
     // ── Unit Tests ────────────────────────────────────────────────────────────
     testImplementation(libs.bundles.testing.unit)
 
