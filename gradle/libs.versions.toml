@@ -45,6 +45,8 @@ turbine = "1.2.0"
 mockk = "1.13.13"
 coroutinesTest = "1.10.1"
 
+accompanist = "0.36.0"
+
 [libraries]
 # ── Compose ──────────────────────────────────────────────────────────────────
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -93,6 +95,10 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 
 # ── Serialization ─────────────────────────────────────────────────────────────
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
+
+# ── System UI Controller ─────────────────────────────────────────────────────────────
+accompanist-systemuicontroller = { group = "com.google.accompanist", name = "accompanist-systemuicontroller", version.ref = "accompanist" }
+
 
 # ── Testing ───────────────────────────────────────────────────────────────────
 junit = { group = "junit", name = "junit", version.ref = "junit" }
