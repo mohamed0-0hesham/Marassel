@@ -13,34 +13,38 @@ class SendMessageUseCase @Inject constructor(
     private val messageRepository: MessageRepository,
 ) {
 
-    suspend operator fun invoke(text: String): SendMessageResult =
-        send { uid, displayName ->
-            val validation = MessageValidator.validateText(text)
-            if (!validation.isValid) {
-                return SendMessageResult.ValidationFailed(validation)
-            }
+    suspend operator fun invoke(text: String): SendMessageResult {
+        val validation = MessageValidator.validateText(text)
+        if (!validation.isValid) {
+            return SendMessageResult.ValidationFailed(validation)
+        }
+
+        return send { uid, displayName ->
             MessageEntity.createTextMessage(
                 senderUid  = uid,
                 senderName = displayName,
                 text       = text,
             )
         }
+    }
 
     suspend fun sendMedia(
         mimeType: String,
         fileSizeBytes: Long,
-    ): SendMessageResult =
-        send { uid, displayName ->
-            val validation = MessageValidator.validateMedia(mimeType, fileSizeBytes)
-            if (!validation.isValid) {
-                return SendMessageResult.ValidationFailed(validation)
-            }
+    ): SendMessageResult {
+        val validation = MessageValidator.validateMedia(mimeType, fileSizeBytes)
+        if (!validation.isValid) {
+            return SendMessageResult.ValidationFailed(validation)
+        }
+
+        return send { uid, displayName ->
             MessageEntity.createMediaMessage(
                 senderUid  = uid,
                 senderName = displayName,
                 mediaType  = mimeType,
             )
         }
+    }
 
     private suspend fun send(
         build: suspend (uid: String, displayName: String) -> MessageEntity,
@@ -55,18 +59,14 @@ class SendMessageUseCase @Inject constructor(
             .getOrNull()
             ?: return SendMessageResult.NotOnboarded
 
-        // Step 3 — Build the message entity (validation already done by caller)
+        // Step 3 — Build the message entity
         val message = build(authUser.uid, profile.username)
 
         // Step 4 — Persist locally for immediate UI feedback
-        messageRepository.saveMessageLocally(message).fold(
-            onSuccess = { return SendMessageResult.Success(message) },
-            onFailure = { return SendMessageResult.StorageError(it) },
+        return messageRepository.saveMessageLocally(message).fold(
+            onSuccess = { SendMessageResult.Success(message) },
+            onFailure = { SendMessageResult.StorageError(it) },
         )
-
-        // Unreachable — fold always returns above — but required for exhaustive return
-        @Suppress("UNREACHABLE_CODE")
-        return SendMessageResult.StorageError(IllegalStateException("Unreachable"))
     }
 }
 
