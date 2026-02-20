@@ -1,0 +1,380 @@
+package com.hesham0_0.marassel.ui.chat
+
+import android.net.Uri
+import androidx.lifecycle.viewModelScope
+import com.hesham0_0.marassel.core.mvi.BaseViewModel
+import com.hesham0_0.marassel.domain.model.MessageStatus
+import com.hesham0_0.marassel.domain.model.UserEntity
+import com.hesham0_0.marassel.domain.usecase.message.DeleteMessageUseCase
+import com.hesham0_0.marassel.domain.usecase.message.DeleteResult
+import com.hesham0_0.marassel.domain.usecase.message.LoadOlderMessagesUseCase
+import com.hesham0_0.marassel.domain.usecase.message.MessageUiItem
+import com.hesham0_0.marassel.domain.usecase.message.ObserveMessagesUseCase
+import com.hesham0_0.marassel.domain.usecase.message.RetryMessageResult
+import com.hesham0_0.marassel.domain.usecase.message.RetryMessageUseCase
+import com.hesham0_0.marassel.domain.usecase.message.SendMessageResult
+import com.hesham0_0.marassel.domain.usecase.message.SendMessageUseCase
+import com.hesham0_0.marassel.domain.usecase.user.GetCurrentUserUseCase
+import com.hesham0_0.marassel.worker.MessageSendOrchestrator
+import com.hesham0_0.marassel.worker.MessageStatusUpdate
+import com.hesham0_0.marassel.worker.WorkInfoMessageBridge
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
+import javax.inject.Inject
+
+@HiltViewModel
+class ChatRoomViewModel @Inject constructor(
+    private val observeMessagesUseCase: ObserveMessagesUseCase,
+    private val sendMessageUseCase: SendMessageUseCase,
+    private val loadOlderMessagesUseCase: LoadOlderMessagesUseCase,
+    private val retryMessageUseCase: RetryMessageUseCase,
+    private val deleteMessageUseCase: DeleteMessageUseCase,
+    private val getCurrentUserUseCase: GetCurrentUserUseCase,
+    private val orchestrator: MessageSendOrchestrator,
+    private val workInfoBridge: WorkInfoMessageBridge,
+) : BaseViewModel<ChatUiState, ChatUiEvent, ChatUiEffect>(ChatUiState()) {
+
+    private val activeWorkJobs = mutableMapOf<String, Job>()
+    private val uploadProgressMap = mutableMapOf<String, Int?>()
+    private var oldestTimestamp: Long = Long.MAX_VALUE
+
+    init {
+        observeCurrentUser()
+        observeMessages()
+    }
+
+    private fun observeCurrentUser() {
+        getCurrentUserUseCase()
+            .onEach { user -> setState { copy(currentUser = user) } }
+            .launchIn(viewModelScope)
+    }
+
+    private fun observeMessages() {
+        observeMessagesUseCase()
+            .onEach { items ->
+                val user = currentState.currentUser
+                val models = items.map { item -> item.toUiModel(user) }
+
+                models.minOfOrNull { it.timestamp }?.let { ts ->
+                    if (ts < oldestTimestamp) oldestTimestamp = ts
+                }
+
+                setState {
+                    val combined = (models + messages)
+                        .distinctBy { it.localId }
+                        .sortedBy { it.timestamp }
+                    copy(
+                        messages = mergeWithProgress(combined),
+                        isLoadingInitial = false,
+                    )
+                }
+
+                // Scroll to bottom on first load or when a new message arrives
+                // at the bottom (handled by the UI via ScrollToBottom effect)
+                setEffect(ChatUiEffect.ScrollToBottom)
+            }
+            .launchIn(viewModelScope)
+    }
+
+    override fun onEvent(event: ChatUiEvent) {
+        when (event) {
+            // Input
+            is ChatUiEvent.MessageInputChanged -> setState {
+                copy(
+                    inputText = event.text,
+                    error = null
+                )
+            }
+
+            is ChatUiEvent.MediaSelected -> setState {
+                copy(
+                    selectedMediaUris = selectedMediaUris + event.uris,
+                    showMediaPicker = false
+                )
+            }
+
+            is ChatUiEvent.RemoveSelectedMedia -> setState { copy(selectedMediaUris = selectedMediaUris - event.uri) }
+            ChatUiEvent.ClearSelectedMedia -> setState { copy(selectedMediaUris = emptyList()) }
+            ChatUiEvent.AttachmentClicked -> setState { copy(showMediaPicker = true) }
+            ChatUiEvent.MediaPickerDismissed -> setState { copy(showMediaPicker = false) }
+
+            // Send
+            ChatUiEvent.SendTextClicked -> onSendText()
+            is ChatUiEvent.SendMediaClicked -> onSendMedia(event.uris)
+
+            // Message actions
+            is ChatUiEvent.RetryMessageClicked -> onRetryMessage(event.localId)
+            is ChatUiEvent.DeleteMessageClicked -> onDeleteMessage(
+                event.localId,
+                event.firebaseKey,
+                event.senderUid
+            )
+
+            is ChatUiEvent.MessageLongPressed -> setState { copy(selectedMessageLocalId = event.localId) }
+            ChatUiEvent.DismissMessageContextMenu -> setState { copy(selectedMessageLocalId = null) }
+
+            // Pagination
+            ChatUiEvent.LoadOlderMessages -> onLoadOlderMessages()
+
+            // Misc
+            ChatUiEvent.DismissError -> setState { copy(error = null) }
+        }
+    }
+
+    private fun onSendText() {
+        val text = currentState.inputText.trim()
+        if (text.isBlank()) return
+
+        // Clear input immediately for responsive feel
+        setState { copy(inputText = "") }
+
+        launch {
+            when (val result = sendMessageUseCase(text)) {
+                is SendMessageResult.Success -> {
+                    // Enqueue WorkManager job and start observing its status
+                    val workRequest = orchestrator.enqueueTextMessage(result.message)
+                    observeWorkStatus(
+                        localId = result.message.localId,
+                        workRequestId = workRequest.id,
+                    )
+                }
+
+                is SendMessageResult.ValidationFailed -> {
+                    // Restore text so user can fix it
+                    setState { copy(inputText = text) }
+                    setEffect(
+                        ChatUiEffect.ShowSnackbar(
+                            com.hesham0_0.marassel.domain.usecase.message.MessageValidator
+                                .toErrorMessage(result.reason) ?: "Invalid message"
+                        )
+                    )
+                }
+
+                is SendMessageResult.NotAuthenticated,
+                is SendMessageResult.NotOnboarded -> {
+                    setState { copy(inputText = text) }
+                    setEffect(ChatUiEffect.ShowSnackbar("Please sign in to send messages"))
+                }
+
+                is SendMessageResult.StorageError -> {
+                    setState { copy(inputText = text) }
+                    setEffect(ChatUiEffect.ShowSnackbar("Failed to queue message. Please try again."))
+                }
+            }
+        }
+    }
+
+    private fun onSendMedia(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        val mimeType = currentState.currentUser?.let { "image/jpeg" } ?: "image/jpeg"
+
+        setState { copy(selectedMediaUris = emptyList()) }
+
+        launch {
+            uris.forEach { uri ->
+                when (val result = sendMessageUseCase.sendMedia(
+                    mimeType = mimeType,
+                    fileSizeBytes = 0L, // validated at picker level
+                )) {
+                    is SendMessageResult.Success -> {
+                        val (uploadRequest, sendRequest) = orchestrator.enqueueMediaMessage(
+                            message = result.message,
+                            mediaUri = uri,
+                            mimeType = mimeType,
+                        )
+                        // Observe upload progress separately
+                        observeUploadProgress(
+                            localId = result.message.localId,
+                            workRequestId = uploadRequest.id,
+                        )
+                        // Observe final send status
+                        observeWorkStatus(
+                            localId = result.message.localId,
+                            workRequestId = sendRequest.id,
+                        )
+                    }
+
+                    else -> setEffect(ChatUiEffect.ShowSnackbar("Failed to queue media. Please try again."))
+                }
+            }
+        }
+    }
+
+    private fun onRetryMessage(localId: String) {
+        launch {
+            when (val result = retryMessageUseCase(localId)) {
+                is RetryMessageResult.Success -> {
+                    val message = result.message
+                    val workRequest = orchestrator.enqueueTextMessage(message)
+                    observeWorkStatus(
+                        localId = localId,
+                        workRequestId = workRequest.id,
+                    )
+                }
+
+                is RetryMessageResult.MessageNotFound -> {
+                    setEffect(ChatUiEffect.ShowSnackbar("Message not found"))
+                }
+
+                is RetryMessageResult.MessageNotFailed -> {
+                    // Already retrying or sent — no action needed
+                }
+
+                is RetryMessageResult.StorageError -> {
+                    setEffect(ChatUiEffect.ShowSnackbar("Failed to retry. Please try again."))
+                }
+            }
+        }
+    }
+
+    private fun onDeleteMessage(localId: String, firebaseKey: String?, senderUid: String) {
+        setState { copy(selectedMessageLocalId = null) }
+        launch {
+            val result = deleteMessageUseCase(
+                localId = localId,
+                firebaseKey = firebaseKey,
+                senderUid = senderUid,
+            )
+            when (result) {
+                is DeleteResult.Success -> { /* real-time listener removes it from UI */
+                }
+
+                is DeleteResult.NotAuthenticated -> setEffect(ChatUiEffect.ShowSnackbar("Not signed in"))
+                is DeleteResult.NotOwner -> setEffect(ChatUiEffect.ShowSnackbar("You can only delete your own messages"))
+                is DeleteResult.UnconfirmedMessage -> setEffect(ChatUiEffect.ShowSnackbar("Can't delete a message that hasn't been sent yet"))
+                is DeleteResult.StorageError -> setEffect(ChatUiEffect.ShowSnackbar("Failed to delete. Please try again."))
+            }
+        }
+    }
+
+    private fun onLoadOlderMessages() {
+        if (currentState.isLoadingOlder || !currentState.hasMoreMessages) return
+
+        setState { copy(isLoadingOlder = true) }
+
+        launch {
+            when (val result = loadOlderMessagesUseCase(
+                beforeTimestamp = oldestTimestamp,
+                limit = LoadOlderMessagesUseCase.DEFAULT_PAGE_SIZE,
+            )) {
+                is com.hesham0_0.marassel.domain.usecase.message.LoadOlderResult.Success -> {
+                    val data = result.data
+                    val user = currentState.currentUser
+                    val models = data.messages.map { entity ->
+                        MessageUiItem(
+                            message = entity,
+                            meta = com.hesham0_0.marassel.domain.usecase.message.MessageUiMeta(
+                                isOwnMessage = entity.senderUid == user?.uid,
+                                showSenderInfo = true,
+                                isLastInBurst = true,
+                                showTimestamp = true,
+                            ),
+                        ).toUiModel(user)
+                    }
+
+                    // Update cursor to the oldest message we now have
+                    models.minOfOrNull { it.timestamp }?.let { ts ->
+                        if (ts < oldestTimestamp) oldestTimestamp = ts
+                    }
+
+                    setState {
+                        val combined = (models + messages)
+                            .distinctBy { it.localId }
+                            .sortedBy { it.timestamp }
+                        copy(
+                            messages = mergeWithProgress(combined),
+                            isLoadingOlder = false,
+                            hasMoreMessages = !data.hasReachedEnd,
+                        )
+                    }
+                }
+
+                is com.hesham0_0.marassel.domain.usecase.message.LoadOlderResult.Error -> {
+                    setState { copy(isLoadingOlder = false) }
+                    setEffect(ChatUiEffect.ShowSnackbar("Failed to load older messages"))
+                }
+            }
+        }
+    }
+
+    private fun observeWorkStatus(localId: String, workRequestId: UUID) {
+        // Cancel any previous observation for this localId
+        activeWorkJobs[localId]?.cancel()
+
+        val job = workInfoBridge
+            .observeMessageStatus(localId, workRequestId)
+            .onEach { update: MessageStatusUpdate ->
+                // Update UI immediately via message list rebuild
+                updateMessageProgress(localId, progress = null)
+
+                if (update.isTerminal) {
+                    // Stop observing — no more state changes expected
+                    activeWorkJobs.remove(localId)?.cancel()
+                }
+            }
+            .launchIn(viewModelScope)
+
+        activeWorkJobs[localId] = job
+    }
+
+    private fun observeUploadProgress(localId: String, workRequestId: UUID) {
+        workInfoBridge
+            .observeUploadProgress(workRequestId)
+            .onEach { progress -> updateMessageProgress(localId, progress) }
+            .launchIn(viewModelScope)
+    }
+
+    private fun updateMessageProgress(localId: String, progress: Int?) {
+        uploadProgressMap[localId] = progress
+        setState { copy(messages = mergeWithProgress(messages)) }
+    }
+
+    private fun mergeWithProgress(models: List<MessageUiModel>): List<MessageUiModel> {
+        if (uploadProgressMap.isEmpty()) return models
+        return models.map { model ->
+            val progress = uploadProgressMap[model.localId]
+            if (progress != model.uploadProgress) model.copy(uploadProgress = progress)
+            else model
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        activeWorkJobs.values.forEach { it.cancel() }
+        activeWorkJobs.clear()
+    }
+}
+
+private val timeFormatter = SimpleDateFormat("h:mm a", Locale.getDefault())
+private val dayFormatter = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
+
+private fun MessageUiItem.toUiModel(currentUser: UserEntity?): MessageUiModel {
+    val entity = message
+    return MessageUiModel(
+        localId = entity.localId,
+        firebaseKey = entity.firebaseKey,
+        senderUid = entity.senderUid,
+        senderName = entity.senderName,
+        senderInitials = UserEntity.computeInitials(entity.senderName),
+        text = entity.text,
+        mediaUrl = entity.mediaUrl,
+        mediaType = entity.mediaType,
+        timestamp = entity.timestamp,
+        formattedTime = timeFormatter.format(Date(entity.timestamp)),
+        status = entity.status,
+        type = entity.type,
+        replyToId = entity.replyToId,
+        isFromCurrentUser = meta.isOwnMessage,
+        showSenderInfo = meta.showSenderInfo,
+        isLastInBurst = meta.isLastInBurst,
+        showDayDivider = meta.showTimestamp,
+        dayDividerLabel = if (meta.showTimestamp) dayFormatter.format(Date(entity.timestamp)) else null,
+        uploadProgress = null,
+    )
+}
