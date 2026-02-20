@@ -1,4 +1,4 @@
-package com.hesham0_0.marassel.domain.usecase
+package com.hesham0_0.marassel.domain.usecase.user
 
 import com.hesham0_0.marassel.domain.model.UserEntity
 import com.hesham0_0.marassel.domain.repository.AuthRepository
