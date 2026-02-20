@@ -7,17 +7,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 @Composable
-internal fun UsernameScreenStub(
-    suggestedName: String,
-    onNavigateToChatRoom: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Username Screen — CHAT-015\nSuggested: $suggestedName")
-    }
-}
-
-@Composable
 internal fun ChatRoomScreenStub(
     onNavigateToMediaViewer: (String) -> Unit,
     modifier: Modifier = Modifier,
