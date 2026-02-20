@@ -20,7 +20,7 @@
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    
+
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature
         android:name="android.hardware.camera"
@@ -46,9 +46,22 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Handles retry action from failed-message notification -->
+            <intent-filter>
+                <action android:name="com.hesham0_0.marassel.ACTION_RETRY_MESSAGE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
+        <!-- Handles the Cancel button in the upload progress notification -->
+        <receiver
+            android:name=".worker.CancelUploadReceiver"
+            android:exported="false" />
 
+        <!-- Handles the Retry button in the failed message notification -->
+        <receiver
+            android:name=".worker.RetryMessageReceiver"
+            android:exported="false" />
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
