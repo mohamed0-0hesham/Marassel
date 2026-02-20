@@ -1,4 +1,4 @@
-package com.hesham0_0.marassel.domain.usecase
+package com.hesham0_0.marassel.domain.usecase.user
 
 object UsernameValidator {
 
