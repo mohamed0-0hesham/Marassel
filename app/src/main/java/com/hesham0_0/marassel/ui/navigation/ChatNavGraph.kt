@@ -16,7 +16,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.hesham0_0.marassel.ui.auth.AuthScreen
 import com.hesham0_0.marassel.ui.navigation.Screen.ArgKeys.ARG_MEDIA_URL
+import com.hesham0_0.marassel.ui.navigation.Screen.ArgKeys.ARG_SUGGESTED_NAME
 
 private const val TRANSITION_DURATION_MS = 350
 
@@ -27,99 +29,92 @@ fun ChatNavGraph(
 ) {
     val startViewModel: StartDestinationViewModel = hiltViewModel()
     val startDestination by startViewModel.startDestination.collectAsStateWithLifecycle()
-
     val resolvedStart = startDestination ?: return
 
     NavHost(
-        navController = navController,
+        navController    = navController,
         startDestination = resolvedStart,
-        modifier = modifier,
-        enterTransition = {
+        modifier         = modifier,
+        enterTransition  = {
             slideInHorizontally(
-                initialOffsetX = { fullWidth -> fullWidth },
-                animationSpec = tween(TRANSITION_DURATION_MS)
-            ) + fadeIn(animationSpec = tween(TRANSITION_DURATION_MS))
+                initialOffsetX = { it },
+                animationSpec = tween(TRANSITION_DURATION_MS),
+            ) + fadeIn(tween(TRANSITION_DURATION_MS))
         },
         exitTransition = {
             slideOutHorizontally(
-                targetOffsetX = { fullWidth -> -fullWidth / 3 },
-                animationSpec = tween(TRANSITION_DURATION_MS)
-            ) + fadeOut(animationSpec = tween(TRANSITION_DURATION_MS))
+                targetOffsetX = { -it / 3 },
+                animationSpec = tween(TRANSITION_DURATION_MS),
+            ) + fadeOut(tween(TRANSITION_DURATION_MS))
         },
         popEnterTransition = {
             slideInHorizontally(
-                initialOffsetX = { fullWidth -> -fullWidth / 3 },
-                animationSpec = tween(TRANSITION_DURATION_MS)
-            ) + fadeIn(animationSpec = tween(TRANSITION_DURATION_MS))
+                initialOffsetX = { -it / 3 },
+                animationSpec = tween(TRANSITION_DURATION_MS),
+            ) + fadeIn(tween(TRANSITION_DURATION_MS))
         },
         popExitTransition = {
             slideOutHorizontally(
-                targetOffsetX = { fullWidth -> fullWidth },
-                animationSpec = tween(TRANSITION_DURATION_MS)
-            ) + fadeOut(animationSpec = tween(TRANSITION_DURATION_MS))
+                targetOffsetX = { it },
+                animationSpec = tween(TRANSITION_DURATION_MS),
+            ) + fadeOut(tween(TRANSITION_DURATION_MS))
         },
     ) {
 
+        // ── Auth ──────────────────────────────────────────────────────────────
+        composable(
+            route = Screen.Auth.route,
+            enterTransition = { fadeIn(tween(TRANSITION_DURATION_MS)) },
+            exitTransition  = { fadeOut(tween(TRANSITION_DURATION_MS)) },
+        ) {
+            AuthScreen(
+                onNavigateToUsername = { suggestedName ->
+                    navController.navigateToUsername(suggestedName)
+                },
+                onNavigateToChatRoom = {
+                    navController.navigateToChatRoom()
+                },
+            )
+        }
+
+        // ── Username ──────────────────────────────────────────────────────────
         composable(
             route = Screen.Username.route,
-            enterTransition = {
-                fadeIn(animationSpec = tween(TRANSITION_DURATION_MS))
-            },
-            exitTransition = {
-                fadeOut(animationSpec = tween(TRANSITION_DURATION_MS))
-            },
-        ) {
+            arguments = listOf(
+                navArgument(ARG_SUGGESTED_NAME) {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+            ),
+        ) { backStackEntry ->
+            val encoded = backStackEntry.arguments?.getString(ARG_SUGGESTED_NAME) ?: ""
+            val suggestedName = java.net.URLDecoder.decode(encoded, "UTF-8")
+            // Full implementation in CHAT-015
             UsernameScreenStub(
-                onNavigateToChatRoom = { navController.navigateToChatRoom() }
+                suggestedName = suggestedName,
+                onNavigateToChatRoom = { navController.navigateToChatRoom() },
             )
         }
 
-        composable(
-            route = Screen.ChatRoom.route,
-            enterTransition = {
-                if (initialState.destination.route == Screen.Username.route) {
-                    slideInHorizontally(
-                        initialOffsetX = { it },
-                        animationSpec = tween(TRANSITION_DURATION_MS)
-                    ) + fadeIn(tween(TRANSITION_DURATION_MS))
-                } else {
-                    fadeIn(tween(TRANSITION_DURATION_MS))
-                }
-            },
-            exitTransition = {
-                fadeOut(animationSpec = tween(TRANSITION_DURATION_MS))
-            },
-        ) {
+        // ── Chat Room ─────────────────────────────────────────────────────────
+        composable(route = Screen.ChatRoom.route) {
             ChatRoomScreenStub(
-                onNavigateToMediaViewer = { url ->
-                    navController.navigateToMediaViewer(url)
-                }
+                onNavigateToMediaViewer = { navController.navigateToMediaViewer(it) },
             )
         }
 
+        // ── Media Viewer ──────────────────────────────────────────────────────
         composable(
             route = Screen.MediaViewer.route,
             arguments = listOf(
-                navArgument(ARG_MEDIA_URL) {
-                    type = NavType.StringType
-                    nullable = false
-                }
+                navArgument(ARG_MEDIA_URL) { type = NavType.StringType },
             ),
-            enterTransition = {
-                fadeIn(animationSpec = tween(TRANSITION_DURATION_MS))
-            },
-            exitTransition = {
-                fadeOut(animationSpec = tween(TRANSITION_DURATION_MS))
-            },
+            enterTransition = { fadeIn(tween(TRANSITION_DURATION_MS)) },
+            exitTransition  = { fadeOut(tween(TRANSITION_DURATION_MS)) },
         ) { backStackEntry ->
-            val encodedUrl = backStackEntry.arguments?.getString(ARG_MEDIA_URL) ?: return@composable
-            val mediaUrl = java.net.URLDecoder.decode(encodedUrl, "UTF-8")
-
-            // Stub — full implementation in CHAT-048
-            MediaViewerScreenStub(
-                mediaUrl = mediaUrl,
-                onBack = { navController.popBackStack() }
-            )
+            val encoded  = backStackEntry.arguments?.getString(ARG_MEDIA_URL) ?: return@composable
+            val mediaUrl = java.net.URLDecoder.decode(encoded, "UTF-8")
+            MediaViewerScreenStub(mediaUrl = mediaUrl, onBack = { navController.popBackStack() })
         }
     }
 }
