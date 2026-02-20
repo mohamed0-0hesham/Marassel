@@ -1,8 +1,10 @@
 package com.hesham0_0.marassel.di
 
 import com.hesham0_0.marassel.data.repository.FirebaseAuthRepository
+import com.hesham0_0.marassel.data.repository.MessageRepositoryImpl
 import com.hesham0_0.marassel.data.repository.UserRepositoryImpl
 import com.hesham0_0.marassel.domain.repository.AuthRepository
+import com.hesham0_0.marassel.domain.repository.MessageRepository
 import com.hesham0_0.marassel.domain.repository.UserRepository
 import dagger.Binds
 import dagger.Module
@@ -25,4 +27,10 @@ abstract class RepositoryModule {
     abstract fun bindUserRepository(
         impl: UserRepositoryImpl,
     ): UserRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindMessageRepository(
+        impl: MessageRepositoryImpl,
+    ): MessageRepository
 }
