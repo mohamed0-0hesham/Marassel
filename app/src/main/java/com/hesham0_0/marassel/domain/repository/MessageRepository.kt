@@ -1,4 +1,25 @@
 package com.hesham0_0.marassel.domain.repository
 
+import com.hesham0_0.marassel.domain.model.MessageEntity
+import com.hesham0_0.marassel.domain.model.MessageStatus
+import kotlinx.coroutines.flow.Flow
+
 interface MessageRepository {
+    fun observeMessages(): Flow<List<MessageEntity>>
+
+    suspend fun sendMessage(message: MessageEntity): Result<String>
+
+    suspend fun saveMessageLocally(message: MessageEntity): Result<Unit>
+
+    suspend fun updateMessageStatus(
+        localId: String,
+        status: MessageStatus,
+        firebaseKey: String? = null,
+    ): Result<Unit>
+
+    suspend fun getPendingMessages(): Result<List<MessageEntity>>
+
+    suspend fun clearPendingMessage(localId: String): Result<Unit>
+
+    suspend fun getLocalMessages(): Result<List<MessageEntity>>
 }
