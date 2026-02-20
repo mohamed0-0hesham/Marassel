@@ -22,4 +22,14 @@ interface MessageRepository {
     suspend fun clearPendingMessage(localId: String): Result<Unit>
 
     suspend fun getLocalMessages(): Result<List<MessageEntity>>
+
+    suspend fun loadOlderMessages(
+        beforeTimestamp: Long,
+        limit: Int,
+    ): Result<List<MessageEntity>>
+
+    suspend fun deleteMessage(
+        firebaseKey: String,
+        localId: String,
+    ): Result<Unit>
 }
