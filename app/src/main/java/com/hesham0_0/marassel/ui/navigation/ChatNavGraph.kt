@@ -19,6 +19,7 @@ import androidx.navigation.navArgument
 import com.hesham0_0.marassel.ui.auth.AuthScreen
 import com.hesham0_0.marassel.ui.navigation.Screen.ArgKeys.ARG_MEDIA_URL
 import com.hesham0_0.marassel.ui.navigation.Screen.ArgKeys.ARG_SUGGESTED_NAME
+import com.hesham0_0.marassel.ui.username.ui.UsernameScreen
 
 private const val TRANSITION_DURATION_MS = 350
 
@@ -90,9 +91,9 @@ fun ChatNavGraph(
             val encoded = backStackEntry.arguments?.getString(ARG_SUGGESTED_NAME) ?: ""
             val suggestedName = java.net.URLDecoder.decode(encoded, "UTF-8")
             // Full implementation in CHAT-015
-            UsernameScreenStub(
-                suggestedName = suggestedName,
+            UsernameScreen(
                 onNavigateToChatRoom = { navController.navigateToChatRoom() },
+                onNavigateToAuth     = { navController.navigateToAuth() },
             )
         }
 

@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.hesham0_0.marassel.core.network.ConnectivityNetworkMonitor
 import com.hesham0_0.marassel.core.network.NetworkMonitor
+import com.hesham0_0.marassel.domain.usecase.user.UsernameValidator
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -26,6 +27,9 @@ object AppModule {
     fun provideUserDataStore(
         @ApplicationContext context: Context,
     ): DataStore<Preferences> = context.userDataStore
+
+    @Provides
+    fun provideUsernameValidator(): UsernameValidator = UsernameValidator
 }
 
 @Module
