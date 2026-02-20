@@ -17,6 +17,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hesham0_0.marassel.ui.auth.AuthScreen
+import com.hesham0_0.marassel.ui.chat.ChatRoomScreen
 import com.hesham0_0.marassel.ui.navigation.Screen.ArgKeys.ARG_MEDIA_URL
 import com.hesham0_0.marassel.ui.navigation.Screen.ArgKeys.ARG_SUGGESTED_NAME
 import com.hesham0_0.marassel.ui.username.ui.UsernameScreen
@@ -33,10 +34,10 @@ fun ChatNavGraph(
     val resolvedStart = startDestination ?: return
 
     NavHost(
-        navController    = navController,
+        navController = navController,
         startDestination = resolvedStart,
-        modifier         = modifier,
-        enterTransition  = {
+        modifier = modifier,
+        enterTransition = {
             slideInHorizontally(
                 initialOffsetX = { it },
                 animationSpec = tween(TRANSITION_DURATION_MS),
@@ -66,7 +67,7 @@ fun ChatNavGraph(
         composable(
             route = Screen.Auth.route,
             enterTransition = { fadeIn(tween(TRANSITION_DURATION_MS)) },
-            exitTransition  = { fadeOut(tween(TRANSITION_DURATION_MS)) },
+            exitTransition = { fadeOut(tween(TRANSITION_DURATION_MS)) },
         ) {
             AuthScreen(
                 onNavigateToUsername = { suggestedName ->
@@ -87,20 +88,19 @@ fun ChatNavGraph(
                     defaultValue = ""
                 },
             ),
-        ) { backStackEntry ->
-            val encoded = backStackEntry.arguments?.getString(ARG_SUGGESTED_NAME) ?: ""
-            val suggestedName = java.net.URLDecoder.decode(encoded, "UTF-8")
-            // Full implementation in CHAT-015
+        ) {
             UsernameScreen(
                 onNavigateToChatRoom = { navController.navigateToChatRoom() },
-                onNavigateToAuth     = { navController.navigateToAuth() },
+                onNavigateToAuth = { navController.navigateToAuth() },
             )
         }
 
         // ── Chat Room ─────────────────────────────────────────────────────────
         composable(route = Screen.ChatRoom.route) {
-            ChatRoomScreenStub(
-                onNavigateToMediaViewer = { navController.navigateToMediaViewer(it) },
+            ChatRoomScreen(
+                onNavigateToMediaViewer = { url ->
+                    navController.navigateToMediaViewer(url)
+                },
             )
         }
 
@@ -111,9 +111,9 @@ fun ChatNavGraph(
                 navArgument(ARG_MEDIA_URL) { type = NavType.StringType },
             ),
             enterTransition = { fadeIn(tween(TRANSITION_DURATION_MS)) },
-            exitTransition  = { fadeOut(tween(TRANSITION_DURATION_MS)) },
+            exitTransition = { fadeOut(tween(TRANSITION_DURATION_MS)) },
         ) { backStackEntry ->
-            val encoded  = backStackEntry.arguments?.getString(ARG_MEDIA_URL) ?: return@composable
+            val encoded = backStackEntry.arguments?.getString(ARG_MEDIA_URL) ?: return@composable
             val mediaUrl = java.net.URLDecoder.decode(encoded, "UTF-8")
             MediaViewerScreenStub(mediaUrl = mediaUrl, onBack = { navController.popBackStack() })
         }
