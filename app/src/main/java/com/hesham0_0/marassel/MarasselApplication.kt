@@ -3,8 +3,10 @@ package com.hesham0_0.marassel
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import jakarta.inject.Inject
+import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
+@HiltAndroidApp
 class MarasselApplication : Application(), Configuration.Provider {
 
     @Inject
