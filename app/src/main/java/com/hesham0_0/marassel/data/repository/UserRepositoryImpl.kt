@@ -5,14 +5,11 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.hesham0_0.marassel.data.repository.UserRepositoryImpl.Keys.PREF_DEVICE_ID
-import com.hesham0_0.marassel.data.repository.UserRepositoryImpl.Keys.PREF_USERNAME
-import kotlinx.coroutines.flow.first
-
 import com.hesham0_0.marassel.domain.model.UserEntity
 import com.hesham0_0.marassel.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 import javax.inject.Inject
@@ -23,71 +20,71 @@ class UserRepositoryImpl @Inject constructor(
     private val dataStore: DataStore<Preferences>,
 ) : UserRepository {
 
-    private companion object Keys {
-        val PREF_USERNAME  = stringPreferencesKey("user_username")
-        val PREF_DEVICE_ID = stringPreferencesKey("user_device_id")
-    }
+    private fun usernameKey(uid: String) =
+        stringPreferencesKey("profile_${uid}_username")
 
+    private fun emailKey(uid: String) =
+        stringPreferencesKey("profile_${uid}_email")
 
-    private val userFlow: Flow<UserEntity?> = dataStore.data
-        .catch { cause ->
-            // Only recover from I/O errors — surface everything else
-            if (cause is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw cause
-            }
-        }
-        .map { preferences ->
-            preferences.toUserEntity()
-        }
+    private fun photoUrlKey(uid: String) =
+        stringPreferencesKey("profile_${uid}_photo_url")
 
-    override suspend fun saveUser(user: UserEntity): Result<Unit> =
+    // ── UserRepository implementation ─────────────────────────────────────────
+
+    override suspend fun hasProfile(uid: String): Boolean =
         runCatching {
-            dataStore.edit { preferences ->
-                preferences[PREF_USERNAME]  = user.username
-                preferences[PREF_DEVICE_ID] = user.deviceId
+            dataStore.data
+                .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+                .map { prefs -> prefs[usernameKey(uid)]?.isNotBlank() == true }
+                .first()
+        }.getOrDefault(false)
+
+    override suspend fun saveProfile(user: UserEntity): Result<Unit> =
+        runCatching {
+            dataStore.edit { prefs ->
+                prefs[usernameKey(user.uid)]  = user.username
+                // Store nullable fields only if non-null
+                user.email?.let    { prefs[emailKey(user.uid)]    = it }
+                user.photoUrl?.let { prefs[photoUrlKey(user.uid)] = it }
             }
             Unit
         }
 
-    override suspend fun getUser(): Result<UserEntity?> =
+    override suspend fun getProfile(uid: String): Result<UserEntity?> =
         runCatching {
             dataStore.data
-                .catch { cause ->
-                    if (cause is IOException) emit(emptyPreferences())
-                    else throw cause
-                }
-                .map { it.toUserEntity() }
+                .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+                .map { prefs -> prefs.toUserEntity(uid) }
                 .first()
         }
 
-    override fun observeUser(): Flow<UserEntity?> = userFlow
+    override fun observeProfile(uid: String): Flow<UserEntity?> =
+        dataStore.data
+            .catch { e ->
+                if (e is IOException) emit(emptyPreferences()) else throw e
+            }
+            .map { prefs -> prefs.toUserEntity(uid) }
 
-    override suspend fun clearUser(): Result<Unit> =
+    override suspend fun clearProfile(uid: String): Result<Unit> =
         runCatching {
-            dataStore.edit { preferences ->
-                preferences.remove(PREF_USERNAME)
-                preferences.remove(PREF_DEVICE_ID)
+            dataStore.edit { prefs ->
+                prefs.remove(usernameKey(uid))
+                prefs.remove(emailKey(uid))
+                prefs.remove(photoUrlKey(uid))
             }
             Unit
         }
 
+    // ── Private helper ────────────────────────────────────────────────────────
 
-    private fun Preferences.toUserEntity(): UserEntity? {
-        val username = this[PREF_USERNAME]  ?: return null
-        val deviceId = this[PREF_DEVICE_ID] ?: return null
-
-        // Guard against blank values that could slip through
-        if (username.isBlank() || deviceId.isBlank()) return null
-
+    private fun Preferences.toUserEntity(uid: String): UserEntity? {
+        val username = this[usernameKey(uid)]?.takeIf { it.isNotBlank() }
+            ?: return null
         return UserEntity.create(
+            uid      = uid,
             username = username,
-            deviceId = deviceId,
+            email    = this[emailKey(uid)],
+            photoUrl = this[photoUrlKey(uid)],
         )
     }
 }
-
-// ── Import for first() ────────────────────────────────────────────────────────
-// Needs to be a top-level import — placed here to keep the class clean
-private suspend fun <T> Flow<T>.firstValue(): T = first()

@@ -17,6 +17,9 @@ hiltNavigation = "1.2.0"
 firebaseBom = "33.7.0"
 firebaseCoroutines = "1.10.1"
 googleServices = "4.4.2"
+firebaseAuth        = "23.1.0"
+credentialManager   = "1.3.0"
+googleIdentity      = "1.1.1"
 
 # WorkManager
 workManager = "2.10.0"
@@ -46,6 +49,7 @@ mockk = "1.13.13"
 coroutinesTest = "1.10.1"
 
 accompanist = "0.36.0"
+googleid = "1.2.0"
 
 [libraries]
 # ── Compose ──────────────────────────────────────────────────────────────────
@@ -78,6 +82,13 @@ firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.r
 firebase-database = { group = "com.google.firebase", name = "firebase-database-ktx" }
 firebase-storage = { group = "com.google.firebase", name = "firebase-storage-ktx" }
 firebase-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "firebaseCoroutines" }
+firebase-auth           = { group = "com.google.firebase", name = "firebase-auth-ktx" }
+
+# ── Credential Manager (Google Sign-In) ───────────────────────────────────────
+credentials                    = { group = "androidx.credentials", name = "credentials",                    version.ref = "credentialManager" }
+credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentialManager" }
+googleid                       = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleIdentity" }
+
 
 # ── WorkManager ───────────────────────────────────────────────────────────────
 work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
@@ -107,6 +118,7 @@ espresso-core = { group = "androidx.test.espresso", name = "espresso-core", vers
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 mockk-android = { group = "io.mockk", name = "mockk-android", version.ref = "mockk" }
+google-googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -138,6 +150,7 @@ hilt = [
     "hilt-work",
 ]
 firebase = [
+    "firebase-auth",
     "firebase-database",
     "firebase-storage",
     "firebase-coroutines",

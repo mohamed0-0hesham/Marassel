@@ -8,14 +8,12 @@ import androidx.compose.ui.Modifier
 
 @Composable
 internal fun UsernameScreenStub(
+    suggestedName: String,
     onNavigateToChatRoom: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("Username Screen — CHAT-015")
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text("Username Screen — CHAT-015\nSuggested: $suggestedName")
     }
 }
 
