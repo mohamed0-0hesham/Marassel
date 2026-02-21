@@ -9,15 +9,16 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.Companion.isPhotoPickerAvailable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 
 const val MAX_MEDIA_ITEMS = 5
 
-fun isPhotoPickerAvailable(): Boolean =
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ||
-            PickVisualMedia.isPhotoPickerAvailable()
+//fun isPhotoPickerAvailable(): Boolean =
+//    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ||
+//            isPhotoPickerAvailable(context)
 
 fun Context.takePersistablePermissions(uris: List<Uri>) {
     uris.forEach { uri ->
@@ -86,7 +87,7 @@ class PhotoPickerLauncher(
     private val fallbackLauncher: ManagedActivityResultLauncher<Intent, androidx.activity.result.ActivityResult>,
 ) {
     fun launch() {
-        if (isPhotoPickerAvailable()) {
+        if (isPhotoPickerAvailable(context)) {
             multiPickerLauncher.launch(PickVisualMediaRequest(mediaType))
         } else {
             // Legacy fallback for API < 26
