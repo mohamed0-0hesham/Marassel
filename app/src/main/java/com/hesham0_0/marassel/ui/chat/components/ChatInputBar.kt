@@ -71,7 +71,7 @@ fun ChatInputBar(
                 .navigationBarsPadding()
                 .padding(bottom = 4.dp),
         ) {
-            
+
             // Typing Indicator
             AnimatedVisibility(
                 visible = hasTypingUsers,
@@ -107,7 +107,9 @@ fun ChatInputBar(
                 // Attachment button
                 IconButton(
                     onClick = onAttachmentClick,
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier
+                        .size(40.dp)
+                        .align(Alignment.CenterVertically),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -144,6 +146,7 @@ fun ChatInputBar(
                             if (isSendEnabled) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.surfaceVariant
                         )
+                        .align(Alignment.CenterVertically)
                         .clickable(enabled = isSendEnabled, onClick = onSendClick),
                     contentAlignment = Alignment.Center,
                 ) {

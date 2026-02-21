@@ -215,7 +215,7 @@ fun ChatRoomScreen(
                 ) { message ->
                     MessageBubble(
                         message = message,
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier,
                         onRetryClick = { viewModel.onEvent(ChatUiEvent.RetryMessageClicked(it)) },
                         onLongPress = { viewModel.onEvent(ChatUiEvent.MessageLongPressed(it)) },
                         onImageClick = { onNavigateToMediaViewer(it) },
