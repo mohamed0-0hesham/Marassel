@@ -5,14 +5,14 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Notifications (runtime permission on API 33+, declared here for all) -->
+    <!-- Notifications (runtime permission on API 33+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- WorkManager foreground service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
-    <!-- Media access (API 33+) -->
+    <!-- Media access (API 33+) — not needed for Photo Picker, only for direct access -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- Media access (API 34+ partial) -->
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
@@ -21,6 +21,7 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
+    <!-- Camera — requested at point of use, not on launch -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature
         android:name="android.hardware.camera"
@@ -46,12 +47,22 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Handles retry action from failed-message notification -->
+            <!-- Handles retry action tapped from failed-message notification -->
             <intent-filter>
                 <action android:name="com.hesham0_0.marassel.ACTION_RETRY_MESSAGE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <!-- Handles the Cancel button in the upload progress notification -->
         <receiver

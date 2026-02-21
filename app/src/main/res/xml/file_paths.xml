@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    FileProvider paths configuration for camera capture temp files.
+
+    Place this file at: res/xml/file_paths.xml
+
+    Referenced by the FileProvider declaration in AndroidManifest.xml:
+    <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="${applicationId}.fileprovider"
+        android:exported="false"
+        android:grantUriPermissions="true">
+        <meta-data
+            android:name="android.support.FILE_PROVIDER_PATHS"
+            android:resource="@xml/file_paths" />
+    </provider>
+
+    cache-path maps to Context.getCacheDir().
+    The camera/ subdirectory is created at runtime by CameraCapture.createCameraTempFile().
+-->
+<paths>
+    <cache-path
+        name="camera_captures"
+        path="camera/" />
+</paths>
