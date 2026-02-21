@@ -1,9 +1,10 @@
 package com.hesham0_0.marassel.ui.chat
 
+import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.viewModelScope
 import com.hesham0_0.marassel.core.mvi.BaseViewModel
-import com.hesham0_0.marassel.domain.model.MessageStatus
 import com.hesham0_0.marassel.domain.model.UserEntity
 import com.hesham0_0.marassel.domain.usecase.message.DeleteMessageUseCase
 import com.hesham0_0.marassel.domain.usecase.message.DeleteResult
@@ -19,6 +20,7 @@ import com.hesham0_0.marassel.worker.MessageSendOrchestrator
 import com.hesham0_0.marassel.worker.MessageStatusUpdate
 import com.hesham0_0.marassel.worker.WorkInfoMessageBridge
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -38,6 +40,7 @@ class ChatRoomViewModel @Inject constructor(
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
     private val orchestrator: MessageSendOrchestrator,
     private val workInfoBridge: WorkInfoMessageBridge,
+    @ApplicationContext private val context: Context,
 ) : BaseViewModel<ChatUiState, ChatUiEvent, ChatUiEffect>(ChatUiState()) {
 
     private val activeWorkJobs = mutableMapOf<String, Job>()
@@ -172,15 +175,26 @@ class ChatRoomViewModel @Inject constructor(
 
     private fun onSendMedia(uris: List<Uri>) {
         if (uris.isEmpty()) return
-        val mimeType = currentState.currentUser?.let { "image/jpeg" } ?: "image/jpeg"
 
         setState { copy(selectedMediaUris = emptyList()) }
 
         launch {
             uris.forEach { uri ->
+                val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                var size = 0L
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                    if (sizeIndex != -1 && cursor.moveToFirst()) {
+                        size = cursor.getLong(sizeIndex)
+                    }
+                }
+                
+                // Fallback if the content resolver doesn't provide the file size
+                if (size == 0L) size = 1L
+
                 when (val result = sendMessageUseCase.sendMedia(
                     mimeType = mimeType,
-                    fileSizeBytes = 0L, // validated at picker level
+                    fileSizeBytes = size, 
                 )) {
                     is SendMessageResult.Success -> {
                         val (uploadRequest, sendRequest) = orchestrator.enqueueMediaMessage(
@@ -197,6 +211,15 @@ class ChatRoomViewModel @Inject constructor(
                         observeWorkStatus(
                             localId = result.message.localId,
                             workRequestId = sendRequest.id,
+                        )
+                    }
+
+                    is SendMessageResult.ValidationFailed -> {
+                        setEffect(
+                            ChatUiEffect.ShowSnackbar(
+                                com.hesham0_0.marassel.domain.usecase.message.MessageValidator
+                                    .toErrorMessage(result.reason) ?: "Invalid media"
+                            )
                         )
                     }
 
