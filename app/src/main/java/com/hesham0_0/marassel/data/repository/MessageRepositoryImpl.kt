@@ -54,7 +54,7 @@ class MessageRepositoryImpl @Inject constructor(
             .catch { cause ->
                 if (cause is IOException) emit(emptyPreferences()) else throw cause
             }
-            .map  { prefs -> prefs.toLocalMessageList() }
+            .map { prefs -> prefs.toLocalMessageList() }
             .onStart { emit(emptyList()) }
 
     private fun mergeMessages(
@@ -82,7 +82,7 @@ class MessageRepositoryImpl @Inject constructor(
     ): Result<List<MessageEntity>> =
         firebaseDataSource.loadOlderMessages(
             beforeTimestamp = beforeTimestamp,
-            limit           = limit,
+            limit = limit,
         )
 
     // ── deleteMessage ─────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ class MessageRepositoryImpl @Inject constructor(
     ): Result<Unit> = runCatching {
         firebaseDataSource.deleteMessage(firebaseKey)
             .getOrElse { throw it }
-        
+
         // Only delete associated media if it is NOT a text message
         if (type != MessageType.TEXT) {
             firebaseStorageDataSource.deleteMediaForMessage(localId)
@@ -122,9 +122,9 @@ class MessageRepositoryImpl @Inject constructor(
         dataStore.edit { prefs ->
             val existing = prefs[key]
                 ?: throw NoSuchElementException("No local message with localId=$localId")
-            val current  = Json.decodeFromString<MessageSerializable>(existing).toEntity()
-            val updated  = current.copy(
-                status      = status,
+            val current = Json.decodeFromString<MessageSerializable>(existing).toEntity()
+            val updated = current.copy(
+                status = status,
                 firebaseKey = firebaseKey ?: current.firebaseKey,
             )
             prefs[key] = Json.encodeToString(updated.toSerializable())
@@ -163,6 +163,18 @@ class MessageRepositoryImpl @Inject constructor(
                 .sortedBy { it.timestamp }
         }
 
+    // ── Typing Presence ───────────────────────────────────────────────────────
+
+    override fun observeTypingUsers(): Flow<Map<String, String>> =
+        firebaseDataSource.observeTypingUsers()
+
+    override suspend fun setTypingStatus(
+        uid: String,
+        displayName: String,
+        isTyping: Boolean
+    ): Result<Unit> =
+        firebaseDataSource.setTypingStatus(uid, displayName, isTyping)
+
     // ── DataStore helpers ─────────────────────────────────────────────────────
 
     private fun Preferences.toLocalMessageList(): List<MessageEntity> =
@@ -194,29 +206,29 @@ private data class MessageSerializable(
 )
 
 private fun MessageEntity.toSerializable() = MessageSerializable(
-    localId     = localId,
+    localId = localId,
     firebaseKey = firebaseKey,
-    senderUid   = senderUid,
-    senderName  = senderName,
-    text        = text,
-    mediaUrl    = mediaUrl,
-    mediaType   = mediaType,
-    timestamp   = timestamp,
-    status      = status.name,
-    type        = type.name,
-    replyToId   = replyToId,
+    senderUid = senderUid,
+    senderName = senderName,
+    text = text,
+    mediaUrl = mediaUrl,
+    mediaType = mediaType,
+    timestamp = timestamp,
+    status = status.name,
+    type = type.name,
+    replyToId = replyToId,
 )
 
 private fun MessageSerializable.toEntity() = MessageEntity(
-    localId     = localId,
+    localId = localId,
     firebaseKey = firebaseKey,
-    senderUid   = senderUid,
-    senderName  = senderName,
-    text        = text,
-    mediaUrl    = mediaUrl,
-    mediaType   = mediaType,
-    timestamp   = timestamp,
-    status      = MessageStatus.valueOf(status),
-    type        = MessageType.fromString(type),
-    replyToId   = replyToId,
+    senderUid = senderUid,
+    senderName = senderName,
+    text = text,
+    mediaUrl = mediaUrl,
+    mediaType = mediaType,
+    timestamp = timestamp,
+    status = MessageStatus.valueOf(status),
+    type = MessageType.fromString(type),
+    replyToId = replyToId,
 )

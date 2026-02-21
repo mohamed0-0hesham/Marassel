@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +52,8 @@ fun ChatInputBar(
     inputText: String,
     selectedMediaUris: List<Uri>,
     isSendEnabled: Boolean,
+    typingLabel: String,
+    hasTypingUsers: Boolean,
     onInputChanged: (String) -> Unit,
     onSendClick: () -> Unit,
     onAttachmentClick: () -> Unit,
@@ -70,6 +71,20 @@ fun ChatInputBar(
                 .navigationBarsPadding()
                 .padding(bottom = 4.dp),
         ) {
+            
+            // Typing Indicator
+            AnimatedVisibility(
+                visible = hasTypingUsers,
+                enter = expandVertically(),
+                exit = shrinkVertically(),
+            ) {
+                Text(
+                    text = typingLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
 
             AnimatedVisibility(
                 visible = selectedMediaUris.isNotEmpty(),
@@ -205,6 +220,8 @@ private fun ChatInputBarPreview() {
             inputText = "Hello!",
             selectedMediaUris = emptyList(),
             isSendEnabled = true,
+            typingLabel = "Alice is typing...",
+            hasTypingUsers = true,
             onInputChanged = {},
             onSendClick = {},
             onAttachmentClick = {},

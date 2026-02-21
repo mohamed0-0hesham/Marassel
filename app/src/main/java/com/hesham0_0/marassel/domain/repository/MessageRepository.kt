@@ -34,4 +34,8 @@ interface MessageRepository {
         localId: String,
         type: MessageType
     ): Result<Unit>
+
+    fun observeTypingUsers(): Flow<Map<String, String>>
+
+    suspend fun setTypingStatus(uid: String, displayName: String, isTyping: Boolean): Result<Unit>
 }

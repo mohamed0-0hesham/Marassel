@@ -12,10 +12,12 @@ import com.hesham0_0.marassel.domain.usecase.message.DeleteResult
 import com.hesham0_0.marassel.domain.usecase.message.LoadOlderMessagesUseCase
 import com.hesham0_0.marassel.domain.usecase.message.MessageUiItem
 import com.hesham0_0.marassel.domain.usecase.message.ObserveMessagesUseCase
+import com.hesham0_0.marassel.domain.usecase.message.ObserveTypingUsersUseCase
 import com.hesham0_0.marassel.domain.usecase.message.RetryMessageResult
 import com.hesham0_0.marassel.domain.usecase.message.RetryMessageUseCase
 import com.hesham0_0.marassel.domain.usecase.message.SendMessageResult
 import com.hesham0_0.marassel.domain.usecase.message.SendMessageUseCase
+import com.hesham0_0.marassel.domain.usecase.message.SetTypingStatusUseCase
 import com.hesham0_0.marassel.domain.usecase.user.GetCurrentUserUseCase
 import com.hesham0_0.marassel.worker.MessageSendOrchestrator
 import com.hesham0_0.marassel.worker.MessageStatusUpdate
@@ -23,8 +25,10 @@ import com.hesham0_0.marassel.worker.WorkInfoMessageBridge
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -39,6 +43,8 @@ class ChatRoomViewModel @Inject constructor(
     private val retryMessageUseCase: RetryMessageUseCase,
     private val deleteMessageUseCase: DeleteMessageUseCase,
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
+    private val observeTypingUsersUseCase: ObserveTypingUsersUseCase,
+    private val setTypingStatusUseCase: SetTypingStatusUseCase,
     private val orchestrator: MessageSendOrchestrator,
     private val workInfoBridge: WorkInfoMessageBridge,
     @ApplicationContext private val context: Context,
@@ -47,10 +53,13 @@ class ChatRoomViewModel @Inject constructor(
     private val activeWorkJobs = mutableMapOf<String, Job>()
     private val uploadProgressMap = mutableMapOf<String, Int?>()
     private var oldestTimestamp: Long = Long.MAX_VALUE
+    
+    private var typingJob: Job? = null
 
     init {
         observeCurrentUser()
         observeMessages()
+        observeTyping()
     }
 
     private fun observeCurrentUser() {
@@ -95,22 +104,31 @@ class ChatRoomViewModel @Inject constructor(
                 val isInitialLoad = currentState.isLoadingInitial
                 val newLastId = models.lastOrNull()?.localId
                 val oldLastId = oldMessages.lastOrNull()?.localId
-
-                if (isInitialLoad || (newLastId != null && newLastId != oldLastId)) {
+                
+                if (isInitialLoad || (newLastId != null && newLastId != oldLastId && models.size >= oldMessages.size)) {
                     setEffect(ChatUiEffect.ScrollToBottom)
                 }
             }
+            .launchIn(viewModelScope)
+    }
+    
+    private fun observeTyping() {
+        observeTypingUsersUseCase()
+            .onEach { users -> setState { copy(typingUsers = users) } }
             .launchIn(viewModelScope)
     }
 
     override fun onEvent(event: ChatUiEvent) {
         when (event) {
             // Input
-            is ChatUiEvent.MessageInputChanged -> setState {
-                copy(
-                    inputText = event.text,
-                    error = null
-                )
+            is ChatUiEvent.MessageInputChanged -> {
+                setState {
+                    copy(
+                        inputText = event.text,
+                        error = null
+                    )
+                }
+                handleTypingState(event.text)
             }
 
             is ChatUiEvent.MediaSelected -> setState {
@@ -148,6 +166,22 @@ class ChatRoomViewModel @Inject constructor(
             ChatUiEvent.DismissError -> setState { copy(error = null) }
         }
     }
+    
+    private fun handleTypingState(text: String) {
+        typingJob?.cancel()
+        
+        if (text.isNotEmpty()) {
+            launch { setTypingStatusUseCase(isTyping = true) }
+            
+            // Automatically stop typing indicator after 3 seconds of inactivity
+            typingJob = viewModelScope.launch {
+                delay(3000)
+                setTypingStatusUseCase(isTyping = false)
+            }
+        } else {
+            launch { setTypingStatusUseCase(isTyping = false) }
+        }
+    }
 
     private fun onSendText() {
         val text = currentState.inputText.trim()
@@ -155,6 +189,10 @@ class ChatRoomViewModel @Inject constructor(
 
         // Clear input immediately for responsive feel
         setState { copy(inputText = "") }
+        
+        // Stop typing indicator
+        typingJob?.cancel()
+        launch { setTypingStatusUseCase(isTyping = false) }
 
         launch {
             when (val result = sendMessageUseCase(text)) {
@@ -423,6 +461,8 @@ class ChatRoomViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        typingJob?.cancel()
+        launch { setTypingStatusUseCase(isTyping = false) }
         activeWorkJobs.values.forEach { it.cancel() }
         activeWorkJobs.clear()
     }

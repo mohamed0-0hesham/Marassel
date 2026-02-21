@@ -139,6 +139,8 @@ fun ChatRoomScreen(
                 inputText = state.inputText,
                 selectedMediaUris = state.selectedMediaUris,
                 isSendEnabled = state.isSendEnabled,
+                typingLabel = state.typingLabel,
+                hasTypingUsers = state.hasTypingUsers,
                 onInputChanged = { viewModel.onEvent(ChatUiEvent.MessageInputChanged(it)) },
                 onSendClick = {
                     if (state.selectedMediaUris.isNotEmpty()) {
