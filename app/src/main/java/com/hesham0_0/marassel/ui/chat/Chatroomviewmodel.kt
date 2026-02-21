@@ -72,8 +72,11 @@ class ChatRoomViewModel @Inject constructor(
                     val combined = (models + messages)
                         .distinctBy { it.localId }
                         .sortedBy { it.timestamp }
+                    
+                    val finalized = recalculateUiFlags(combined)
+                    
                     copy(
-                        messages = mergeWithProgress(combined),
+                        messages = mergeWithProgress(finalized),
                         isLoadingInitial = false,
                     )
                 }
@@ -310,8 +313,11 @@ class ChatRoomViewModel @Inject constructor(
                         val combined = (models + messages)
                             .distinctBy { it.localId }
                             .sortedBy { it.timestamp }
+                        
+                        val finalized = recalculateUiFlags(combined)
+                        
                         copy(
-                            messages = mergeWithProgress(combined),
+                            messages = mergeWithProgress(finalized),
                             isLoadingOlder = false,
                             hasMoreMessages = !data.hasReachedEnd,
                         )
@@ -365,6 +371,33 @@ class ChatRoomViewModel @Inject constructor(
             if (progress != model.uploadProgress) model.copy(uploadProgress = progress)
             else model
         }
+    }
+    
+    private fun recalculateUiFlags(models: List<MessageUiModel>): List<MessageUiModel> {
+        if (models.isEmpty()) return emptyList()
+
+        return models.mapIndexed { index, model ->
+            val prev = models.getOrNull(index - 1)
+            val next = models.getOrNull(index + 1)
+
+            val showTimestamp = prev == null || !isSameDay(prev.timestamp, model.timestamp)
+            val showSenderInfo = prev == null || prev.senderUid != model.senderUid || showTimestamp
+            val isLastInBurst = next == null || next.senderUid != model.senderUid || !isSameDay(model.timestamp, next.timestamp)
+
+            model.copy(
+                showSenderInfo = !model.isFromCurrentUser && showSenderInfo,
+                isLastInBurst = isLastInBurst,
+                showDayDivider = showTimestamp,
+                dayDividerLabel = if (showTimestamp) dayFormatter.format(Date(model.timestamp)) else null
+            )
+        }
+    }
+
+    private fun isSameDay(timestampA: Long, timestampB: Long): Boolean {
+        val calA = java.util.Calendar.getInstance().apply { timeInMillis = timestampA }
+        val calB = java.util.Calendar.getInstance().apply { timeInMillis = timestampB }
+        return calA.get(java.util.Calendar.YEAR) == calB.get(java.util.Calendar.YEAR)
+                && calA.get(java.util.Calendar.DAY_OF_YEAR) == calB.get(java.util.Calendar.DAY_OF_YEAR)
     }
 
     override fun onCleared() {
