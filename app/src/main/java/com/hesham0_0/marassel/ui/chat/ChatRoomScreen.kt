@@ -282,6 +282,7 @@ fun ChatRoomScreen(
                         localId = selectedMessage.localId,
                         firebaseKey = selectedMessage.firebaseKey,
                         senderUid = selectedMessage.senderUid,
+                        type = selectedMessage.type
                     )
                 )
             },

@@ -90,11 +90,15 @@ class MessageRepositoryImpl @Inject constructor(
     override suspend fun deleteMessage(
         firebaseKey: String,
         localId: String,
+        type: MessageType
     ): Result<Unit> = runCatching {
         firebaseDataSource.deleteMessage(firebaseKey)
             .getOrElse { throw it }
         
-        firebaseStorageDataSource.deleteMediaForMessage(localId)
+        // Only delete associated media if it is NOT a text message
+        if (type != MessageType.TEXT) {
+            firebaseStorageDataSource.deleteMediaForMessage(localId)
+        }
 
         clearPendingMessage(localId)
             .getOrElse { throw it }

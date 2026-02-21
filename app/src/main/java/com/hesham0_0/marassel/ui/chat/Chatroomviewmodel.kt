@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.lifecycle.viewModelScope
 import com.hesham0_0.marassel.core.mvi.BaseViewModel
+import com.hesham0_0.marassel.domain.model.MessageType
 import com.hesham0_0.marassel.domain.model.UserEntity
 import com.hesham0_0.marassel.domain.usecase.message.DeleteMessageUseCase
 import com.hesham0_0.marassel.domain.usecase.message.DeleteResult
@@ -68,11 +69,15 @@ class ChatRoomViewModel @Inject constructor(
                     if (ts < oldestTimestamp) oldestTimestamp = ts
                 }
 
+                val oldMessages = currentState.messages
+
                 setState {
                     val combined = if (models.isEmpty()) {
                         emptyList()
                     } else {
                         val incomingOldest = models.minOf { it.timestamp }
+                        // Keep paginated messages that are older than the real-time window.
+                        // This naturally drops deleted messages inside the real-time window.
                         val paginated = messages.filter { it.timestamp < incomingOldest }
                         (paginated + models).distinctBy { it.localId }.sortedBy { it.timestamp }
                     }
@@ -85,9 +90,15 @@ class ChatRoomViewModel @Inject constructor(
                     )
                 }
 
-                // Scroll to bottom on first load or when a new message arrives
-                // at the bottom (handled by the UI via ScrollToBottom effect)
-                setEffect(ChatUiEffect.ScrollToBottom)
+                // Scroll to bottom on first load or when a new message arrives at the bottom.
+                // This prevents flashing or jumping when old messages are loaded or items are deleted.
+                val isInitialLoad = currentState.isLoadingInitial
+                val newLastId = models.lastOrNull()?.localId
+                val oldLastId = oldMessages.lastOrNull()?.localId
+
+                if (isInitialLoad || (newLastId != null && newLastId != oldLastId)) {
+                    setEffect(ChatUiEffect.ScrollToBottom)
+                }
             }
             .launchIn(viewModelScope)
     }
@@ -123,7 +134,8 @@ class ChatRoomViewModel @Inject constructor(
             is ChatUiEvent.DeleteMessageClicked -> onDeleteMessage(
                 event.localId,
                 event.firebaseKey,
-                event.senderUid
+                event.senderUid,
+                event.type
             )
 
             is ChatUiEvent.MessageLongPressed -> setState { copy(selectedMessageLocalId = event.localId) }
@@ -263,13 +275,14 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
-    private fun onDeleteMessage(localId: String, firebaseKey: String?, senderUid: String) {
+    private fun onDeleteMessage(localId: String, firebaseKey: String?, senderUid: String, type: MessageType) {
         setState { copy(selectedMessageLocalId = null) }
         launch {
             val result = deleteMessageUseCase(
                 localId = localId,
                 firebaseKey = firebaseKey,
                 senderUid = senderUid,
+                type = type
             )
             when (result) {
                 is DeleteResult.Success -> {
@@ -396,7 +409,7 @@ class ChatRoomViewModel @Inject constructor(
                 showSenderInfo = !model.isFromCurrentUser && showSenderInfo,
                 isLastInBurst = isLastInBurst,
                 showDayDivider = showTimestamp,
-                dayDividerLabel = if (showTimestamp) dayFormatter.format(Date(model.timestamp)) else null
+                dayDividerLabel = if (showTimestamp) formatDay(model.timestamp) else null
             )
         }
     }
@@ -415,8 +428,21 @@ class ChatRoomViewModel @Inject constructor(
     }
 }
 
-private val timeFormatter = SimpleDateFormat("h:mm a", Locale.getDefault())
-private val dayFormatter = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
+private val timeFormatterThreadLocal = object : ThreadLocal<SimpleDateFormat>() {
+    override fun initialValue() = SimpleDateFormat("h:mm a", Locale.getDefault())
+}
+
+private val dayFormatterThreadLocal = object : ThreadLocal<SimpleDateFormat>() {
+    override fun initialValue() = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
+}
+
+private fun formatTime(timestamp: Long): String {
+    return timeFormatterThreadLocal.get()?.format(Date(timestamp)) ?: ""
+}
+
+private fun formatDay(timestamp: Long): String {
+    return dayFormatterThreadLocal.get()?.format(Date(timestamp)) ?: ""
+}
 
 private fun MessageUiItem.toUiModel(currentUser: UserEntity?): MessageUiModel {
     val entity = message
@@ -430,7 +456,7 @@ private fun MessageUiItem.toUiModel(currentUser: UserEntity?): MessageUiModel {
         mediaUrl = entity.mediaUrl,
         mediaType = entity.mediaType,
         timestamp = entity.timestamp,
-        formattedTime = timeFormatter.format(Date(entity.timestamp)),
+        formattedTime = formatTime(entity.timestamp),
         status = entity.status,
         type = entity.type,
         replyToId = entity.replyToId,
@@ -438,7 +464,7 @@ private fun MessageUiItem.toUiModel(currentUser: UserEntity?): MessageUiModel {
         showSenderInfo = meta.showSenderInfo,
         isLastInBurst = meta.isLastInBurst,
         showDayDivider = meta.showTimestamp,
-        dayDividerLabel = if (meta.showTimestamp) dayFormatter.format(Date(entity.timestamp)) else null,
+        dayDividerLabel = if (meta.showTimestamp) formatDay(entity.timestamp) else null,
         uploadProgress = null,
     )
 }

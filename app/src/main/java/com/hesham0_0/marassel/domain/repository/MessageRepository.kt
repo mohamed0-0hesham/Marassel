@@ -2,6 +2,7 @@ package com.hesham0_0.marassel.domain.repository
 
 import com.hesham0_0.marassel.domain.model.MessageEntity
 import com.hesham0_0.marassel.domain.model.MessageStatus
+import com.hesham0_0.marassel.domain.model.MessageType
 import kotlinx.coroutines.flow.Flow
 
 interface MessageRepository {
@@ -31,5 +32,6 @@ interface MessageRepository {
     suspend fun deleteMessage(
         firebaseKey: String,
         localId: String,
+        type: MessageType
     ): Result<Unit>
 }

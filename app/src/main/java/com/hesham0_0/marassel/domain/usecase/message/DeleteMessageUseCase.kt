@@ -1,5 +1,6 @@
 package com.hesham0_0.marassel.domain.usecase.message
 
+import com.hesham0_0.marassel.domain.model.MessageType
 import com.hesham0_0.marassel.domain.repository.AuthRepository
 import com.hesham0_0.marassel.domain.repository.MessageRepository
 import javax.inject.Inject
@@ -13,6 +14,7 @@ class DeleteMessageUseCase @Inject constructor(
         localId: String,
         firebaseKey: String?,
         senderUid: String,
+        type: MessageType,
     ): DeleteResult {
 
         // Step 1 — Resolve current user
@@ -40,6 +42,7 @@ class DeleteMessageUseCase @Inject constructor(
         messageRepository.deleteMessage(
             firebaseKey = firebaseKey,
             localId     = localId,
+            type        = type
         ).fold(
             onSuccess = { return DeleteResult.Success(localId = localId) },
             onFailure = { return DeleteResult.StorageError(it)           },
