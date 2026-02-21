@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,11 +27,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
+import coil.decode.VideoFrameDecoder
 import coil.request.ImageRequest
+import coil.request.videoFrameMillis
 import com.hesham0_0.marassel.ui.theme.ChatSizes
 import com.hesham0_0.marassel.ui.theme.MediaThumbnailShape
 
@@ -88,11 +92,21 @@ private fun MediaThumbnailChip(
     uri: Uri,
     onRemove: () -> Unit,
 ) {
+    val isVideo = uri.toString().lowercase().run { 
+        endsWith(".mp4") || endsWith(".3gp") || endsWith(".mov") || endsWith(".webm") || contains(".mp4?")
+    }
+
     Box(modifier = Modifier.size(ChatSizes.MediaThumbnailSize)) {
         // Thumbnail image
         SubcomposeAsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(uri)
+                .apply {
+                    if (isVideo) {
+                        decoderFactory(VideoFrameDecoder.Factory())
+                        videoFrameMillis(1000)
+                    }
+                }
                 .crossfade(true)
                 .build(),
             contentDescription = "Selected media",
@@ -109,6 +123,23 @@ private fun MediaThumbnailChip(
                 }
             }
         )
+        
+        if (isVideo) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(24.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), shape = CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = "Play Video",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
 
         Box(
             modifier = Modifier

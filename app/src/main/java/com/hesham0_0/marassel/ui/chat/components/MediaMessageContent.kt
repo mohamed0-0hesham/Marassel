@@ -12,7 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,7 +30,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
+import coil.decode.VideoFrameDecoder
 import coil.request.ImageRequest
+import coil.request.videoFrameMillis
 import com.hesham0_0.marassel.ui.theme.MediaThumbnailShape
 
 @Composable
@@ -220,41 +226,71 @@ private fun FourPlusGrid(urls: List<String>, onClick: (String) -> Unit) {
 
 @Composable
 private fun MediaImage(url: String, modifier: Modifier) {
-    SubcomposeAsyncImage(
-        model = ImageRequest.Builder(LocalContext.current)
-            .data(url)
-            .crossfade(true)
-            .build(),
-        contentDescription = "Media",
-        contentScale = ContentScale.Crop,
-        modifier = modifier,
-        loading = {
+    val isVideo = url.lowercase().run { 
+        endsWith(".mp4") || endsWith(".3gp") || endsWith(".mov") || endsWith(".webm") || contains(".mp4?")
+    }
+
+    Box(modifier = modifier) {
+        SubcomposeAsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(url)
+                .apply {
+                    if (isVideo) {
+                        decoderFactory(VideoFrameDecoder.Factory())
+                        videoFrameMillis(1000)
+                    }
+                }
+                .crossfade(true)
+                .build(),
+            contentDescription = "Media",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+            loading = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                    )
+                }
+            },
+            error = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.errorContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "⚠",
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
+            },
+        )
+        
+        if (isVideo) {
+            // Add a small play icon overlay for videos
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
+                    .align(Alignment.Center)
+                    .size(48.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), shape = CircleShape),
+                contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp,
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = "Play Video",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
                 )
             }
-        },
-        error = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.errorContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "⚠",
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                )
-            }
-        },
-    )
+        }
+    }
 }
 
 @Composable

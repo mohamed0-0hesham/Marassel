@@ -119,6 +119,7 @@ dependencies {
 
     // Coil — image loading
     implementation(libs.coil.compose)
+    implementation(libs.coil.video)
 
     // Kotlin Serialization
     implementation(libs.kotlinx.serialization.json)
