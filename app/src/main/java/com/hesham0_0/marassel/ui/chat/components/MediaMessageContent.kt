@@ -1,7 +1,8 @@
 package com.hesham0_0.marassel.ui.chat.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,7 @@ fun MediaMessageContent(
     localUri: String? = null,
     uploadProgress: Int? = null,
     onImageClick: (String) -> Unit = {},
+    onLongClick: () -> Unit = {},
 ) {
 
     val displayUrls = mediaUrls.ifEmpty {
@@ -56,38 +58,47 @@ fun MediaMessageContent(
                 url = displayUrls[0],
                 uploadProgress = uploadProgress,
                 onClick = { onImageClick(displayUrls[0]) },
+                onLongClick = onLongClick,
             )
 
             2 -> TwoImageRow(
                 urls = displayUrls,
                 onClick = onImageClick,
+                onLongClick = onLongClick,
             )
 
             3 -> ThreeImageLayout(
                 urls = displayUrls,
                 onClick = onImageClick,
+                onLongClick = onLongClick,
             )
 
             else -> FourPlusGrid(
                 urls = displayUrls,
                 onClick = onImageClick,
+                onLongClick = onLongClick,
             )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SingleImage(
     url: String,
     uploadProgress: Int?,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(MAX_MEDIA_HEIGHT)
             .clip(MediaThumbnailShape)
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
     ) {
         MediaImage(
             url = url,
@@ -99,8 +110,13 @@ private fun SingleImage(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TwoImageRow(urls: List<String>, onClick: (String) -> Unit) {
+private fun TwoImageRow(
+    urls: List<String>, 
+    onClick: (String) -> Unit,
+    onLongClick: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(GRID_GAP),
@@ -112,14 +128,22 @@ private fun TwoImageRow(urls: List<String>, onClick: (String) -> Unit) {
                     .weight(1f)
                     .aspectRatio(1f)
                     .clip(MediaThumbnailShape)
-                    .clickable { onClick(url) },
+                    .combinedClickable(
+                        onClick = { onClick(url) },
+                        onLongClick = onLongClick
+                    ),
             )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ThreeImageLayout(urls: List<String>, onClick: (String) -> Unit) {
+private fun ThreeImageLayout(
+    urls: List<String>, 
+    onClick: (String) -> Unit,
+    onLongClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -133,7 +157,10 @@ private fun ThreeImageLayout(urls: List<String>, onClick: (String) -> Unit) {
                 .weight(1.3f)
                 .fillMaxSize()
                 .clip(MediaThumbnailShape)
-                .clickable { onClick(urls[0]) },
+                .combinedClickable(
+                    onClick = { onClick(urls[0]) },
+                    onLongClick = onLongClick
+                ),
         )
 
         Column(
@@ -149,15 +176,23 @@ private fun ThreeImageLayout(urls: List<String>, onClick: (String) -> Unit) {
                         .weight(1f)
                         .fillMaxWidth()
                         .clip(MediaThumbnailShape)
-                        .clickable { onClick(url) },
+                        .combinedClickable(
+                            onClick = { onClick(url) },
+                            onLongClick = onLongClick
+                        ),
                 )
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FourPlusGrid(urls: List<String>, onClick: (String) -> Unit) {
+private fun FourPlusGrid(
+    urls: List<String>, 
+    onClick: (String) -> Unit,
+    onLongClick: () -> Unit,
+) {
     val visible = urls.take(4)
     val overflow = urls.size - 4
 
@@ -179,7 +214,10 @@ private fun FourPlusGrid(urls: List<String>, onClick: (String) -> Unit) {
                         .weight(1f)
                         .fillMaxSize()
                         .clip(MediaThumbnailShape)
-                        .clickable { onClick(url) },
+                        .combinedClickable(
+                            onClick = { onClick(url) },
+                            onLongClick = onLongClick
+                        ),
                 )
             }
         }
@@ -197,7 +235,10 @@ private fun FourPlusGrid(urls: List<String>, onClick: (String) -> Unit) {
                         .weight(1f)
                         .fillMaxSize()
                         .clip(MediaThumbnailShape)
-                        .clickable { onClick(url) },
+                        .combinedClickable(
+                            onClick = { onClick(url) },
+                            onLongClick = onLongClick
+                        ),
                 ) {
                     MediaImage(url = url, modifier = Modifier.fillMaxSize())
                     if (isLast) {

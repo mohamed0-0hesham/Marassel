@@ -1,11 +1,10 @@
 package com.hesham0_0.marassel.data.repository
 
-import com.hesham0_0.marassel.domain.model.AuthProvider
-import com.hesham0_0.marassel.domain.model.AuthUser
-
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.hesham0_0.marassel.domain.model.AuthProvider
+import com.hesham0_0.marassel.domain.model.AuthUser
 import com.hesham0_0.marassel.domain.repository.AuthRepository
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow

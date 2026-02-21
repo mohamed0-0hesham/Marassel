@@ -69,9 +69,13 @@ class ChatRoomViewModel @Inject constructor(
                 }
 
                 setState {
-                    val combined = (models + messages)
-                        .distinctBy { it.localId }
-                        .sortedBy { it.timestamp }
+                    val combined = if (models.isEmpty()) {
+                        emptyList()
+                    } else {
+                        val incomingOldest = models.minOf { it.timestamp }
+                        val paginated = messages.filter { it.timestamp < incomingOldest }
+                        (paginated + models).distinctBy { it.localId }.sortedBy { it.timestamp }
+                    }
                     
                     val finalized = recalculateUiFlags(combined)
                     
@@ -268,7 +272,11 @@ class ChatRoomViewModel @Inject constructor(
                 senderUid = senderUid,
             )
             when (result) {
-                is DeleteResult.Success -> { /* real-time listener removes it from UI */
+                is DeleteResult.Success -> {
+                    // Immediately remove from UI state for instant feedback
+                    setState { 
+                        copy(messages = messages.filter { it.localId != localId })
+                    }
                 }
 
                 is DeleteResult.NotAuthenticated -> setEffect(ChatUiEffect.ShowSnackbar("Not signed in"))
