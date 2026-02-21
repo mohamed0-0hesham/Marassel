@@ -1,8 +1,6 @@
 package com.hesham0_0.marassel.ui.chat
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -17,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -47,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hesham0_0.marassel.ui.chat.components.ChatInputBar
 import com.hesham0_0.marassel.ui.chat.components.MessageBubble
 import com.hesham0_0.marassel.ui.chat.components.MessageContextMenu
+import com.hesham0_0.marassel.ui.media.MediaPickerBottomSheet
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
@@ -78,17 +78,6 @@ fun ChatRoomScreen(
         }
     }
 
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 5),
-    ) { uris ->
-        if (uris.isNotEmpty()) {
-            viewModel.onEvent(ChatUiEvent.MediaSelected(uris))
-        } else {
-            viewModel.onEvent(ChatUiEvent.MediaPickerDismissed)
-        }
-    }
-
-    // ── Collect one-shot effects ──────────────────────────────────────────────
     LaunchedEffect(Unit) {
         viewModel.effects.collectLatest { effect ->
             when (effect) {
@@ -111,26 +100,11 @@ fun ChatRoomScreen(
                     snackbarHost.showSnackbar(effect.message)
 
                 is ChatUiEffect.OpenMediaPicker ->
-                    photoPickerLauncher.launch(
-                        PickVisualMediaRequest(
-                            ActivityResultContracts.PickVisualMedia.ImageAndVideo
-                        )
-                    )
+                    viewModel.onEvent(ChatUiEvent.AttachmentClicked)
             }
         }
     }
 
-    LaunchedEffect(state.showMediaPicker) {
-        if (state.showMediaPicker) {
-            photoPickerLauncher.launch(
-                PickVisualMediaRequest(
-                    ActivityResultContracts.PickVisualMedia.ImageAndVideo
-                )
-            )
-        }
-    }
-
-    // Trigger LoadOlderMessages when the user scrolls to the top.
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
             .filter { it == 0 }
@@ -151,10 +125,10 @@ fun ChatRoomScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Chat Room",
-                        style = MaterialTheme.typography.titleLarge,
+                    text = "Chat Room",
+                    style = MaterialTheme.typography.titleLarge
                     )
-                },
+                        },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                 ),
@@ -195,18 +169,19 @@ fun ChatRoomScreen(
                 item(key = "header") {
                     when {
                         state.isLoadingOlder -> LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth()
                         )
 
-                        !state.hasMoreMessages && state.messages.isNotEmpty() -> Text(
-                            text = "Beginning of conversation",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                        )
+                        !state.hasMoreMessages && state.messages.isNotEmpty() ->
+                            Text(
+                                text = "Beginning of conversation",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                            )
 
                         else -> androidx.compose.foundation.layout.Spacer(
                             Modifier.padding(vertical = 4.dp)
@@ -234,19 +209,14 @@ fun ChatRoomScreen(
 
                 items(
                     items = state.messages,
-                    key = { it.localId },       // stable keys for animateItem
+                    key = { it.localId }
                 ) { message ->
                     MessageBubble(
                         message = message,
                         modifier = Modifier.animateItem(),
                         onRetryClick = { viewModel.onEvent(ChatUiEvent.RetryMessageClicked(it)) },
                         onLongPress = { viewModel.onEvent(ChatUiEvent.MessageLongPressed(it)) },
-                        onImageClick = { url ->
-                            viewModel.onEvent(
-                                ChatUiEvent.DismissMessageContextMenu
-                            )
-                            onNavigateToMediaViewer(url)
-                        },
+                        onImageClick = { onNavigateToMediaViewer(it) },
                     )
                 }
             }
@@ -262,10 +232,8 @@ fun ChatRoomScreen(
                 BadgedBox(
                     badge = {
                         if (newMessageCount > 0) {
-                            androidx.compose.material3.Badge {
-                                Text(
-                                    text = if (newMessageCount > 99) "99+" else "$newMessageCount"
-                                )
+                            Badge {
+                                Text(if (newMessageCount > 99) "99+" else "$newMessageCount")
                             }
                         }
                     },
@@ -285,12 +253,21 @@ fun ChatRoomScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Scroll to bottom",
+                            contentDescription = "Scroll to bottom"
                         )
                     }
                 }
             }
         }
+    }
+
+    if (state.showMediaPicker) {
+        MediaPickerBottomSheet(
+            onDismiss = { viewModel.onEvent(ChatUiEvent.MediaPickerDismissed) },
+            onMediaSelected = { uris: List<Uri> ->
+                viewModel.onEvent(ChatUiEvent.MediaSelected(uris))
+            },
+        )
     }
 
     val selectedMessage = state.selectedMessage
