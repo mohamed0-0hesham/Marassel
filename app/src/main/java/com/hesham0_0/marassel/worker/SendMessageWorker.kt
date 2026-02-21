@@ -1,6 +1,8 @@
 package com.hesham0_0.marassel.worker
 
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -81,10 +83,20 @@ class SendMessageWorker @AssistedInject constructor(
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
         val localId = inputData.getString(WorkerKeys.KEY_LOCAL_ID) ?: "unknown"
-        return ForegroundInfo(
-            WorkerKeys.NOTIFICATION_ID_UPLOAD,
-            NotificationHelper.buildUploadIndeterminateNotification(appContext, localId),
-        )
+        val notification = NotificationHelper.buildUploadIndeterminateNotification(appContext, localId)
+        
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(
+                WorkerKeys.NOTIFICATION_ID_UPLOAD,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } else {
+            ForegroundInfo(
+                WorkerKeys.NOTIFICATION_ID_UPLOAD,
+                notification
+            )
+        }
     }
 
 

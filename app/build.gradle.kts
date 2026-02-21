@@ -69,6 +69,7 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/LICENSE.md"
             excludes += "/META-INF/LICENSE-notice.md"
+            excludes += "META-INF/gradle/incremental.annotation.processors"
         }
     }
 
@@ -118,6 +119,7 @@ dependencies {
 
     // Coil — image loading
     implementation(libs.coil.compose)
+    implementation(libs.coil.video)
 
     // Kotlin Serialization
     implementation(libs.kotlinx.serialization.json)
@@ -132,5 +134,5 @@ dependencies {
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.bundles.testing.android)
     androidTestImplementation(libs.work.testing)
-    androidTestImplementation(libs.hilt.android.compiler)
+    kspAndroidTest(libs.hilt.android.compiler)
 }

@@ -1,7 +1,8 @@
 package com.hesham0_0.marassel.ui.chat.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,7 +13,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,7 +31,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
+import coil.decode.VideoFrameDecoder
 import coil.request.ImageRequest
+import coil.request.videoFrameMillis
 import com.hesham0_0.marassel.ui.theme.MediaThumbnailShape
 
 @Composable
@@ -36,6 +43,7 @@ fun MediaMessageContent(
     localUri: String? = null,
     uploadProgress: Int? = null,
     onImageClick: (String) -> Unit = {},
+    onLongClick: () -> Unit = {},
 ) {
 
     val displayUrls = mediaUrls.ifEmpty {
@@ -50,38 +58,47 @@ fun MediaMessageContent(
                 url = displayUrls[0],
                 uploadProgress = uploadProgress,
                 onClick = { onImageClick(displayUrls[0]) },
+                onLongClick = onLongClick,
             )
 
             2 -> TwoImageRow(
                 urls = displayUrls,
                 onClick = onImageClick,
+                onLongClick = onLongClick,
             )
 
             3 -> ThreeImageLayout(
                 urls = displayUrls,
                 onClick = onImageClick,
+                onLongClick = onLongClick,
             )
 
             else -> FourPlusGrid(
                 urls = displayUrls,
                 onClick = onImageClick,
+                onLongClick = onLongClick,
             )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SingleImage(
     url: String,
     uploadProgress: Int?,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(MAX_MEDIA_HEIGHT)
             .clip(MediaThumbnailShape)
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
     ) {
         MediaImage(
             url = url,
@@ -93,8 +110,13 @@ private fun SingleImage(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TwoImageRow(urls: List<String>, onClick: (String) -> Unit) {
+private fun TwoImageRow(
+    urls: List<String>, 
+    onClick: (String) -> Unit,
+    onLongClick: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(GRID_GAP),
@@ -106,14 +128,22 @@ private fun TwoImageRow(urls: List<String>, onClick: (String) -> Unit) {
                     .weight(1f)
                     .aspectRatio(1f)
                     .clip(MediaThumbnailShape)
-                    .clickable { onClick(url) },
+                    .combinedClickable(
+                        onClick = { onClick(url) },
+                        onLongClick = onLongClick
+                    ),
             )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ThreeImageLayout(urls: List<String>, onClick: (String) -> Unit) {
+private fun ThreeImageLayout(
+    urls: List<String>, 
+    onClick: (String) -> Unit,
+    onLongClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -127,7 +157,10 @@ private fun ThreeImageLayout(urls: List<String>, onClick: (String) -> Unit) {
                 .weight(1.3f)
                 .fillMaxSize()
                 .clip(MediaThumbnailShape)
-                .clickable { onClick(urls[0]) },
+                .combinedClickable(
+                    onClick = { onClick(urls[0]) },
+                    onLongClick = onLongClick
+                ),
         )
 
         Column(
@@ -143,15 +176,23 @@ private fun ThreeImageLayout(urls: List<String>, onClick: (String) -> Unit) {
                         .weight(1f)
                         .fillMaxWidth()
                         .clip(MediaThumbnailShape)
-                        .clickable { onClick(url) },
+                        .combinedClickable(
+                            onClick = { onClick(url) },
+                            onLongClick = onLongClick
+                        ),
                 )
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FourPlusGrid(urls: List<String>, onClick: (String) -> Unit) {
+private fun FourPlusGrid(
+    urls: List<String>, 
+    onClick: (String) -> Unit,
+    onLongClick: () -> Unit,
+) {
     val visible = urls.take(4)
     val overflow = urls.size - 4
 
@@ -173,7 +214,10 @@ private fun FourPlusGrid(urls: List<String>, onClick: (String) -> Unit) {
                         .weight(1f)
                         .fillMaxSize()
                         .clip(MediaThumbnailShape)
-                        .clickable { onClick(url) },
+                        .combinedClickable(
+                            onClick = { onClick(url) },
+                            onLongClick = onLongClick
+                        ),
                 )
             }
         }
@@ -191,7 +235,10 @@ private fun FourPlusGrid(urls: List<String>, onClick: (String) -> Unit) {
                         .weight(1f)
                         .fillMaxSize()
                         .clip(MediaThumbnailShape)
-                        .clickable { onClick(url) },
+                        .combinedClickable(
+                            onClick = { onClick(url) },
+                            onLongClick = onLongClick
+                        ),
                 ) {
                     MediaImage(url = url, modifier = Modifier.fillMaxSize())
                     if (isLast) {
@@ -220,41 +267,71 @@ private fun FourPlusGrid(urls: List<String>, onClick: (String) -> Unit) {
 
 @Composable
 private fun MediaImage(url: String, modifier: Modifier) {
-    SubcomposeAsyncImage(
-        model = ImageRequest.Builder(LocalContext.current)
-            .data(url)
-            .crossfade(true)
-            .build(),
-        contentDescription = "Media",
-        contentScale = ContentScale.Crop,
-        modifier = modifier,
-        loading = {
+    val isVideo = url.lowercase().run { 
+        endsWith(".mp4") || endsWith(".3gp") || endsWith(".mov") || endsWith(".webm") || contains(".mp4?")
+    }
+
+    Box(modifier = modifier) {
+        SubcomposeAsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(url)
+                .apply {
+                    if (isVideo) {
+                        decoderFactory(VideoFrameDecoder.Factory())
+                        videoFrameMillis(1000)
+                    }
+                }
+                .crossfade(true)
+                .build(),
+            contentDescription = "Media",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+            loading = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                    )
+                }
+            },
+            error = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.errorContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "⚠",
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
+            },
+        )
+        
+        if (isVideo) {
+            // Add a small play icon overlay for videos
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
+                    .align(Alignment.Center)
+                    .size(48.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), shape = CircleShape),
+                contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp,
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = "Play Video",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
                 )
             }
-        },
-        error = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.errorContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "⚠",
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                )
-            }
-        },
-    )
+        }
+    }
 }
 
 @Composable

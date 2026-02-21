@@ -144,12 +144,16 @@ sealed interface ChatUiEvent : UiEvent {
         val localId: String,
         val firebaseKey: String?,
         val senderUid: String,
+        val type: MessageType
     )                                                       : ChatUiEvent
     data class MessageLongPressed(val localId: String)      : ChatUiEvent
     data object DismissMessageContextMenu                   : ChatUiEvent
 
     // Pagination
     data object LoadOlderMessages                           : ChatUiEvent
+
+    // Initial Load
+    data object InitialScrollCompleted                      : ChatUiEvent
 
     // Misc
     data object DismissError                                : ChatUiEvent

@@ -168,6 +168,7 @@ private fun BubbleContent(
                     mediaUrls = listOfNotNull(message.mediaUrl),
                     uploadProgress = message.uploadProgress,
                     onImageClick = onImageClick,
+                    onLongClick = { onLongPress(message.localId) },
                     modifier = if (message.text != null)
                         Modifier.padding(bottom = 6.dp) else Modifier,
                 )

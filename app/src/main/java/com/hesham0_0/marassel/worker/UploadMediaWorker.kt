@@ -1,6 +1,8 @@
 package com.hesham0_0.marassel.worker
 
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -100,15 +102,26 @@ class UploadMediaWorker @AssistedInject constructor(
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    private fun buildForegroundInfo(localId: String, progress: Int): ForegroundInfo =
-        ForegroundInfo(
-            WorkerKeys.NOTIFICATION_ID_UPLOAD,
-            if (progress == 0) {
-                NotificationHelper.buildUploadIndeterminateNotification(appContext, localId)
-            } else {
-                NotificationHelper.buildUploadProgressNotification(appContext, localId, progress)
-            },
-        )
+    private fun buildForegroundInfo(localId: String, progress: Int): ForegroundInfo {
+        val notification = if (progress == 0) {
+            NotificationHelper.buildUploadIndeterminateNotification(appContext, localId)
+        } else {
+            NotificationHelper.buildUploadProgressNotification(appContext, localId, progress)
+        }
+        
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(
+                WorkerKeys.NOTIFICATION_ID_UPLOAD,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } else {
+            ForegroundInfo(
+                WorkerKeys.NOTIFICATION_ID_UPLOAD,
+                notification
+            )
+        }
+    }
 
     private suspend fun handleUploadFailure(localId: String, cause: Throwable): Result {
         return if (runAttemptCount < MAX_ATTEMPTS - 1) {
