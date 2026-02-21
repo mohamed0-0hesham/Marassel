@@ -95,7 +95,6 @@ class ChatRoomViewModel @Inject constructor(
                     
                     copy(
                         messages = mergeWithProgress(finalized),
-                        isLoadingInitial = false,
                     )
                 }
 
@@ -120,6 +119,10 @@ class ChatRoomViewModel @Inject constructor(
 
     override fun onEvent(event: ChatUiEvent) {
         when (event) {
+            ChatUiEvent.InitialScrollCompleted -> {
+                setState { copy(isLoadingInitial = false) }
+            }
+
             // Input
             is ChatUiEvent.MessageInputChanged -> {
                 setState {

@@ -152,6 +152,9 @@ sealed interface ChatUiEvent : UiEvent {
     // Pagination
     data object LoadOlderMessages                           : ChatUiEvent
 
+    // Initial Load
+    data object InitialScrollCompleted                      : ChatUiEvent
+
     // Misc
     data object DismissError                                : ChatUiEvent
 }

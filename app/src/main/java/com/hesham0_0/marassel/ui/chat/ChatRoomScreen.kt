@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -82,12 +84,16 @@ fun ChatRoomScreen(
         viewModel.effects.collectLatest { effect ->
             when (effect) {
                 is ChatUiEffect.ScrollToBottom -> {
-                    if (isNearBottom) {
+                    if (isNearBottom || state.isLoadingInitial) {
                         listState.animateScrollToItem(
                             (state.messages.size - 1).coerceAtLeast(0)
                         )
                         newMessageCount = 0
                         lastSeenCount = state.messages.size
+                        
+                        if (state.isLoadingInitial) {
+                            viewModel.onEvent(ChatUiEvent.InitialScrollCompleted)
+                        }
                     } else {
                         newMessageCount = state.messages.size - lastSeenCount
                     }
@@ -111,7 +117,7 @@ fun ChatRoomScreen(
             .debounce(300)
             .distinctUntilChanged()
             .collect {
-                if (!state.isLoadingOlder && state.hasMoreMessages) {
+                if (!state.isLoadingOlder && state.hasMoreMessages && !state.isLoadingInitial) {
                     viewModel.onEvent(ChatUiEvent.LoadOlderMessages)
                 }
             }
@@ -222,9 +228,25 @@ fun ChatRoomScreen(
                     )
                 }
             }
+            
+            AnimatedVisibility(
+                visible = state.isLoadingInitial,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surface),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
 
             AnimatedVisibility(
-                visible = !isNearBottom,
+                visible = !isNearBottom && !state.isLoadingInitial,
                 enter = slideInVertically { it } + fadeIn(),
                 exit = slideOutVertically { it } + fadeOut(),
                 modifier = Modifier

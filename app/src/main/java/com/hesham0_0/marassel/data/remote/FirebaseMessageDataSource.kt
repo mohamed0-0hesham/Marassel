@@ -12,7 +12,6 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -57,7 +56,6 @@ class FirebaseMessageDataSource @Inject constructor(
             query.addValueEventListener(listener)
             awaitClose { query.removeEventListener(listener) }
         }
-            .onStart { emit(emptyList()) }
             .catch { emit(emptyList()) }
 
     suspend fun sendMessage(message: MessageEntity): Result<String> =
