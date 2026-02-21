@@ -18,6 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hesham0_0.marassel.ui.auth.AuthScreen
 import com.hesham0_0.marassel.ui.chat.ChatRoomScreen
+import com.hesham0_0.marassel.ui.media.MediaViewerScreen
 import com.hesham0_0.marassel.ui.navigation.Screen.ArgKeys.ARG_MEDIA_URL
 import com.hesham0_0.marassel.ui.navigation.Screen.ArgKeys.ARG_SUGGESTED_NAME
 import com.hesham0_0.marassel.ui.username.ui.UsernameScreen
@@ -113,9 +114,8 @@ fun ChatNavGraph(
             enterTransition = { fadeIn(tween(TRANSITION_DURATION_MS)) },
             exitTransition = { fadeOut(tween(TRANSITION_DURATION_MS)) },
         ) { backStackEntry ->
-            val encoded = backStackEntry.arguments?.getString(ARG_MEDIA_URL) ?: return@composable
-            val mediaUrl = java.net.URLDecoder.decode(encoded, "UTF-8")
-            MediaViewerScreenStub(mediaUrl = mediaUrl, onBack = { navController.popBackStack() })
+            val mediaUrl = backStackEntry.arguments?.getString(ARG_MEDIA_URL) ?: return@composable
+            MediaViewerScreen(mediaUrl = mediaUrl, onBack = { navController.popBackStack() })
         }
     }
 }

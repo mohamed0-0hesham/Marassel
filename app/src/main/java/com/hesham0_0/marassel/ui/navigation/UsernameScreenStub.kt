@@ -18,17 +18,3 @@ internal fun ChatRoomScreenStub(
         Text("Chat Room Screen — CHAT-044")
     }
 }
-
-@Composable
-internal fun MediaViewerScreenStub(
-    mediaUrl: String,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("Media Viewer — CHAT-048\n$mediaUrl")
-    }
-}
