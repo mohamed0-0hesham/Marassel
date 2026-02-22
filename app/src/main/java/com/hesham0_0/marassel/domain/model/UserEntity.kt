@@ -8,36 +8,20 @@ data class UserEntity(
     val initials: String,
 ) {
     companion object {
-
-        /**
-         * Primary factory — builds a [UserEntity] from an authenticated
-         * Firebase user and the display name they chose/confirmed.
-         */
         fun create(
             uid: String,
             username: String,
             email: String? = null,
             photoUrl: String? = null,
         ): UserEntity = UserEntity(
-            uid      = uid,
+            uid = uid,
             username = username.trim(),
-            email    = email,
+            email = email,
             photoUrl = photoUrl,
             initials = computeInitials(username.trim()),
         )
 
         /**
-         * Computes 1–2 character uppercase initials from a display name.
-         *
-         * Rules (applied in order):
-         * 1. Trim whitespace
-         * 2. Split into words by whitespace
-         * 3. Take first letter of each word, uppercase
-         * 4. Limit to 2 characters
-         * 5. Fallback to first 2 chars of username if result is empty
-         * 6. Fallback to "?" if username is blank
-         *
-         * Examples:
          *   "John Doe"       → "JD"
          *   "Alice"          → "A"
          *   "mohamed jane w"    → "MJ"

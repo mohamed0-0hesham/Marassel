@@ -14,23 +14,10 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Firebase Auth implementation of [AuthRepository].
- *
- * All sign-in methods use [kotlinx.coroutines.tasks.await] to bridge
- * Firebase's Task API into coroutines cleanly.
- *
- * The [observeAuthState] flow uses [callbackFlow] to wrap Firebase's
- * [FirebaseAuth.AuthStateListener] — the listener is registered when
- * the first collector subscribes and unregistered via [awaitClose]
- * when all collectors cancel, preventing memory leaks.
- */
 @Singleton
 class FirebaseAuthRepository @Inject constructor(
     private val auth: FirebaseAuth,
 ) : AuthRepository {
-
-    // ── Auth State ────────────────────────────────────────────────────────────
 
     override fun observeAuthState(): Flow<AuthUser?> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
@@ -45,8 +32,6 @@ class FirebaseAuthRepository @Inject constructor(
 
     override suspend fun getCurrentUser(): AuthUser? =
         auth.currentUser?.toDomain()
-
-    // ── Email / Password ──────────────────────────────────────────────────────
 
     override suspend fun signUpWithEmail(
         email: String,
@@ -70,8 +55,6 @@ class FirebaseAuthRepository @Inject constructor(
             ?: error("Sign-in succeeded but user is null")
     }
 
-    // ── Google ────────────────────────────────────────────────────────────────
-
     override suspend fun signInWithGoogle(
         googleIdToken: String,
     ): Result<AuthUser> = runCatching {
@@ -83,15 +66,11 @@ class FirebaseAuthRepository @Inject constructor(
             ?: error("Google sign-in succeeded but user is null")
     }
 
-    // ── Password Reset ────────────────────────────────────────────────────────
-
     override suspend fun sendPasswordResetEmail(
         email: String,
     ): Result<Unit> = runCatching {
         auth.sendPasswordResetEmail(email).await()
     }
-
-    // ── Sign Out ──────────────────────────────────────────────────────────────
 
     override suspend fun signOut(): Result<Unit> = runCatching {
         auth.signOut()

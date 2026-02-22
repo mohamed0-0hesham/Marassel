@@ -29,8 +29,6 @@ class UserRepositoryImpl @Inject constructor(
     private fun photoUrlKey(uid: String) =
         stringPreferencesKey("profile_${uid}_photo_url")
 
-    // ── UserRepository implementation ─────────────────────────────────────────
-
     override suspend fun hasProfile(uid: String): Boolean =
         runCatching {
             dataStore.data
