@@ -3,11 +3,13 @@ package com.hesham0_0.marassel.ui.chat
 // ── ChatInputBarTest ──────────────────────────────────────────────────────────
 
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.hesham0_0.marassel.domain.model.MessageStatus
@@ -21,20 +23,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/**
- * Compose UI tests for [ChatInputBar].
- *
- * These run on a device/emulator (androidTest source set) using the
- * Compose testing library. No ViewModel is involved — all state is
- * provided directly to the composable so tests remain fast and focused.
- */
 @RunWith(AndroidJUnit4::class)
 class ChatInputBarTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
-
-    // ── Send button state ─────────────────────────────────────────────────────
 
     @Test
     fun `send button is disabled when inputText is empty and no media selected`() {
@@ -54,12 +47,9 @@ class ChatInputBarTest {
             }
         }
 
-        // Send icon is not clickable when isSendEnabled = false
         composeTestRule
             .onNodeWithContentDescription("Send")
             .assertExists()
-        // The send box uses clickable(enabled = isSendEnabled) so it won't respond to clicks
-        // We verify it renders; the enabled state is enforced in the composable via the flag
     }
 
     @Test
@@ -199,12 +189,6 @@ class ChatInputBarTest {
 // MessageBubbleTest
 // ══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Compose UI tests for [MessageBubble].
- *
- * Verifies text rendering, status indicator display, retry callback,
- * long-press callback, and sender-info visibility.
- */
 @RunWith(AndroidJUnit4::class)
 class MessageBubbleTest {
 
@@ -241,8 +225,6 @@ class MessageBubbleTest {
         dayDividerLabel    = null,
     )
 
-    // ── Text rendering ────────────────────────────────────────────────────────
-
     @Test
     fun `bubble renders message text`() {
         composeTestRule.setContent {
@@ -265,8 +247,6 @@ class MessageBubbleTest {
         composeTestRule.onNodeWithText("3:45 PM").assertExists()
     }
 
-    // ── Sender info ───────────────────────────────────────────────────────────
-
     @Test
     fun `sender name is shown when showSenderInfo is true and incoming`() {
         composeTestRule.setContent {
@@ -286,13 +266,10 @@ class MessageBubbleTest {
             }
         }
 
-        // "Bob" text should not appear (sender name hidden in burst continuation)
         composeTestRule.onAllNodes(hasText("Bob")).let { nodes ->
             // It's acceptable for 0 nodes to match
         }
     }
-
-    // ── Status indicators ─────────────────────────────────────────────────────
 
     @Test
     fun `SENT status shows check icon for outgoing message`() {
@@ -335,8 +312,6 @@ class MessageBubbleTest {
         assertEquals("retry-msg", retried)
     }
 
-    // ── Long press ────────────────────────────────────────────────────────────
-
     @Test
     fun `long press fires onLongPress with message localId`() {
         var longPressedId = ""
@@ -350,11 +325,8 @@ class MessageBubbleTest {
         }
 
         composeTestRule.onNodeWithText("Hello, World!").performClick() // smoke
-        // Long press requires performTouchInput; verify node exists
         composeTestRule.onNodeWithText("Hello, World!").assertExists()
     }
-
-    // ── Day divider ───────────────────────────────────────────────────────────
 
     @Test
     fun `day divider label is shown when showDayDivider is true`() {
@@ -384,27 +356,14 @@ class MessageBubbleTest {
 // ChatRoomScreenSmokeTest
 // ══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Smoke-level UI tests for [ChatRoomScreen].
- *
- * We do NOT inject a real ViewModel here — instead we test the screen's
- * composable sub-components in isolation (input bar, empty state text)
- * so no Firebase/WorkManager calls are made.
- *
- * Full end-to-end tests that include [ChatRoomViewModel] would require
- * Hilt test runner setup and are in a separate E2E test module.
- */
 @RunWith(AndroidJUnit4::class)
 class ChatRoomComponentTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    // ── Empty state ───────────────────────────────────────────────────────────
-
     @Test
     fun `empty state text is shown when messages list is empty`() {
-        // Render the empty state label directly, as it would appear in ChatRoomScreen
         composeTestRule.setContent {
             MarasselTheme {
                 androidx.compose.foundation.layout.Box(
@@ -418,8 +377,6 @@ class ChatRoomComponentTest {
 
         composeTestRule.onNodeWithText("No messages yet. Say hello! 👋").assertExists()
     }
-
-    // ── Multiple messages render ───────────────────────────────────────────────
 
     @Test
     fun `multiple message bubbles are rendered in a list`() {
@@ -443,8 +400,6 @@ class ChatRoomComponentTest {
         composeTestRule.onNodeWithText("Second message").assertExists()
         composeTestRule.onNodeWithText("Third message").assertExists()
     }
-
-    // ── Context menu ──────────────────────────────────────────────────────────
 
     @Test
     fun `MessageContextMenu shows Delete option for own message`() {
@@ -512,7 +467,7 @@ class ChatRoomComponentTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Delete").performClick()
+        composeTestRule.onNodeWithText("Delete").performSemanticsAction(SemanticsActions.OnClick)
         assertTrue("onDelete callback must fire", deleted)
     }
 
@@ -532,8 +487,6 @@ class ChatRoomComponentTest {
 
         composeTestRule.onNodeWithText("Copy text").assertExists()
     }
-
-    // ── MessageStatusIndicator ────────────────────────────────────────────────
 
     @Test
     fun `MessageStatusIndicator shows Sent icon for SENT status`() {
@@ -577,8 +530,6 @@ class ChatRoomComponentTest {
         assertTrue("onRetryClick must fire for FAILED status", retried)
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
     private fun makeBubbleModel(
         localId:          String        = "msg-1",
         text:             String        = "Hello",
@@ -609,6 +560,5 @@ class ChatRoomComponentTest {
         get() = androidx.compose.ui.Modifier.fillMaxSize()
 }
 
-// Needed for fillMaxSize() shorthand above
 private fun androidx.compose.ui.Modifier.fillMaxSize() =
     this.then(androidx.compose.ui.Modifier)

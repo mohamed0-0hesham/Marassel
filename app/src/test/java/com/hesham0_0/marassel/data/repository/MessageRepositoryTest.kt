@@ -24,29 +24,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-
-// * Unit tests for [MessageRepositoryImpl].
-// *
-// * All Firebase and DataStore dependencies are mocked with MockK so no
-// * real network or disk I/O occurs. Tests run on the JVM in the
-// * `test/` source set.
-// *
-// * Covered areas:
-// * - [observeMessages] merge / deduplication / sort logic
-// * - [sendMessage] delegation to [FirebaseMessageDataSource]
-// * - [loadOlderMessages] delegation to [FirebaseMessageDataSource]
-// * - [saveMessageLocally] DataStore write
-// * - [updateMessageStatus] DataStore update; missing-key error path
-// * - [clearPendingMessage] DataStore removal
-// * - [getPendingMessages] PENDING-only filter
-// * - [getLocalMessages] returns all local messages sorted by timestamp
-// * - [deleteMessage] calls Firebase + optional Storage cleanup + clears local
-// * - [observeTypingUsers] / [setTypingStatus] delegation
-// * - IOException resilience in DataStore flows
-
-class MessageRepositoryTest {
-
-    // ── Collaborators (all mocked) ────────────────────────────────────────────
+class   MessageRepositoryTest {
 
     private lateinit var firebaseDataSource: FirebaseMessageDataSource
     private lateinit var storageDataSource: FirebaseStorageDataSource
@@ -59,12 +37,12 @@ class MessageRepositoryTest {
         storageDataSource = mockk()
         dataStore = mockk()
 
-        // Safe defaults
         every { dataStore.data } returns flowOf(emptyPreferences())
-        coEvery { dataStore.edit(any()) } coAnswers {
-            val block = firstArg<suspend (MutablePreferences) -> Unit>()
+        // edit is an inline function that calls updateData
+        coEvery { dataStore.updateData(any()) } coAnswers {
+            val transform = firstArg<suspend (Preferences) -> Preferences>()
             val prefs = mutablePreferencesOf()
-            block(prefs)
+            transform(prefs)
             prefs
         }
         every { firebaseDataSource.observeMessages() } returns flowOf(emptyList())
@@ -76,8 +54,6 @@ class MessageRepositoryTest {
             dataStore = dataStore,
         )
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun pending(
         localId: String = "local-1",
@@ -104,13 +80,6 @@ class MessageRepositoryTest {
     ) = pending(localId = localId, timestamp = timestamp, status = MessageStatus.SENT)
         .copy(firebaseKey = firebaseKey)
 
-    /**
-     * Builds a [Preferences] object that the DataStore mock will emit,
-     * containing the given messages serialised with the same JSON format
-     * that [MessageRepositoryImpl] writes internally.
-     *
-     * The JSON structure mirrors the private [MessageSerializable] class.
-     */
     private fun prefsWithMessages(messages: List<MessageEntity>): Preferences {
         val prefs = mutablePreferencesOf()
         messages.forEach { msg ->
@@ -121,7 +90,6 @@ class MessageRepositoryTest {
         return prefs
     }
 
-    /** Produces JSON that matches the private MessageSerializable format. */
     private fun buildMessageJson(msg: MessageEntity): String = """
         {
           "localId":     "${msg.localId}",
@@ -137,10 +105,6 @@ class MessageRepositoryTest {
           "replyToId":   ${msg.replyToId?.let { "\"$it\"" } ?: "null"}
         }
     """.trimIndent()
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // observeMessages
-    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     fun `observeMessages emits only Firebase messages when DataStore is empty`() = runTest {
@@ -164,7 +128,6 @@ class MessageRepositoryTest {
 
         val result = repository.observeMessages().first()
 
-        // Only the SENT Firebase copy should remain; PENDING duplicate removed
         assertEquals(1, result.size)
         assertEquals(MessageStatus.SENT, result[0].status)
         assertEquals("fb-1", result[0].firebaseKey)
@@ -187,7 +150,6 @@ class MessageRepositoryTest {
 
     @Test
     fun `observeMessages does not include SENT local messages that match Firebase`() = runTest {
-        // A SENT local (edge case: already marked locally) with a matching Firebase entry
         val sentLocal = sent(localId = "local-1", firebaseKey = "fb-1")
         val remoteSent = sent(localId = "local-1", firebaseKey = "fb-1")
 
@@ -224,10 +186,6 @@ class MessageRepositoryTest {
         assertTrue(result.isEmpty())
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // sendMessage
-    // ══════════════════════════════════════════════════════════════════════════
-
     @Test
     fun `sendMessage delegates to firebaseDataSource and returns success`() = runTest {
         val msg = pending()
@@ -250,10 +208,6 @@ class MessageRepositoryTest {
         assertTrue(result.isFailure)
         assertEquals(cause, result.exceptionOrNull())
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // loadOlderMessages
-    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     fun `loadOlderMessages delegates to firebaseDataSource with correct args`() = runTest {
@@ -282,74 +236,48 @@ class MessageRepositoryTest {
         assertTrue(result.isFailure)
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // saveMessageLocally
-    // ══════════════════════════════════════════════════════════════════════════
-
     @Test
     fun `saveMessageLocally calls dataStore edit exactly once`() = runTest {
         val result = repository.saveMessageLocally(pending())
 
         assertTrue(result.isSuccess)
-        coVerify(exactly = 1) { dataStore.edit(any()) }
+        coVerify(exactly = 1) { dataStore.updateData(any()) }
     }
 
     @Test
     fun `saveMessageLocally returns failure when dataStore throws`() = runTest {
-        coEvery { dataStore.edit(any()) } throws RuntimeException("disk full")
+        coEvery { dataStore.updateData(any()) } throws RuntimeException("disk full")
 
         val result = repository.saveMessageLocally(pending())
 
         assertTrue(result.isFailure)
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // updateMessageStatus
-    // ══════════════════════════════════════════════════════════════════════════
-
     @Test
     fun `updateMessageStatus returns failure when localId not in DataStore`() = runTest {
-        // edit() is called but the key won't exist — inner block throws NoSuchElementException
-        coEvery { dataStore.edit(any()) } coAnswers {
-            val block = firstArg<suspend (MutablePreferences) -> Unit>()
-            try {
-                block(mutablePreferencesOf()) // no key present → throws inside block
-            } catch (it: Exception) {
-                // rethrow so runCatching inside impl catches it
-                throw it
-            }
-            mutablePreferencesOf()
-        }
+        coEvery { dataStore.updateData(any()) } throws NoSuchElementException("key not found inside edit block")
 
         val result = repository.updateMessageStatus("nonexistent", MessageStatus.SENT, "fb-key")
 
         assertTrue(result.isFailure)
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // clearPendingMessage
-    // ══════════════════════════════════════════════════════════════════════════
-
     @Test
     fun `clearPendingMessage calls dataStore edit and returns success`() = runTest {
         val result = repository.clearPendingMessage("local-1")
 
         assertTrue(result.isSuccess)
-        coVerify(exactly = 1) { dataStore.edit(any()) }
+        coVerify(exactly = 1) { dataStore.updateData(any()) }
     }
 
     @Test
     fun `clearPendingMessage returns failure when dataStore throws`() = runTest {
-        coEvery { dataStore.edit(any()) } throws RuntimeException("io error")
+        coEvery { dataStore.updateData(any()) } throws RuntimeException("io error")
 
         val result = repository.clearPendingMessage("local-1")
 
         assertTrue(result.isFailure)
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // getPendingMessages
-    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     fun `getPendingMessages returns only PENDING messages`() = runTest {
@@ -365,7 +293,6 @@ class MessageRepositoryTest {
         val messages = result.getOrNull()!!
         assertEquals(2, messages.size)
         assertTrue(messages.all { it.status == MessageStatus.PENDING })
-        // Sorted by timestamp ascending
         assertEquals("p1", messages[0].localId)
         assertEquals("p3", messages[1].localId)
     }
@@ -377,10 +304,6 @@ class MessageRepositoryTest {
         assertTrue(result.isSuccess)
         assertTrue(result.getOrNull()!!.isEmpty())
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // getLocalMessages
-    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     fun `getLocalMessages returns all messages sorted by timestamp`() = runTest {
@@ -400,10 +323,6 @@ class MessageRepositoryTest {
         assertEquals("m1", messages[2].localId) // 3_000L
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // deleteMessage
-    // ══════════════════════════════════════════════════════════════════════════
-
     @Test
     fun `deleteMessage calls firebase deleteMessage then clearPendingMessage for TEXT`() = runTest {
         coEvery { firebaseDataSource.deleteMessage("fb-1") } returns Result.success(Unit)
@@ -412,9 +331,7 @@ class MessageRepositoryTest {
 
         assertTrue(result.isSuccess)
         coVerify(exactly = 1) { firebaseDataSource.deleteMessage("fb-1") }
-        // clearPendingMessage internally calls dataStore.edit
-        coVerify(exactly = 1) { dataStore.edit(any()) }
-        // Storage delete should NOT be called for TEXT messages
+        coVerify(exactly = 1) { dataStore.updateData(any()) }
         coVerify(exactly = 0) { storageDataSource.deleteMediaForMessage(any()) }
     }
 
@@ -447,8 +364,7 @@ class MessageRepositoryTest {
         val result = repository.deleteMessage("fb-1", "local-1", MessageType.TEXT)
 
         assertTrue(result.isFailure)
-        // dataStore.edit should NOT be called if Firebase fails
-        coVerify(exactly = 0) { dataStore.edit(any()) }
+        coVerify(exactly = 0) { dataStore.updateData(any()) }
     }
 
     @Test
@@ -461,10 +377,6 @@ class MessageRepositoryTest {
 
         assertTrue(result.isFailure)
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // observeTypingUsers / setTypingStatus
-    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     fun `observeTypingUsers delegates to firebaseDataSource`() = runTest {
@@ -487,19 +399,13 @@ class MessageRepositoryTest {
         coVerify(exactly = 1) { firebaseDataSource.setTypingStatus("uid-1", "Alice", true) }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // IOException resilience
-    // ══════════════════════════════════════════════════════════════════════════
-
     @Test
     fun `observeMessages emits empty local list when DataStore throws IOException`() = runTest {
-        // IOException in DataStore is caught and replaced with emptyPreferences()
         every { dataStore.data } returns kotlinx.coroutines.flow.flow {
             throw java.io.IOException("disk error")
         }
         every { firebaseDataSource.observeMessages() } returns flowOf(emptyList())
 
-        // Should not throw — onStart emits emptyList() before IOException propagates
         val result = repository.observeMessages().first()
         assertTrue(result.isEmpty())
     }

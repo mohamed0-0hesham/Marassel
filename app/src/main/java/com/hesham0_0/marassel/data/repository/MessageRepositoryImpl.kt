@@ -39,8 +39,6 @@ class MessageRepositoryImpl @Inject constructor(
     private fun pendingKey(localId: String) =
         stringPreferencesKey("${PENDING_KEY_PREFIX}_$localId")
 
-    // ── observeMessages ───────────────────────────────────────────────────────
-
     override fun observeMessages(): Flow<List<MessageEntity>> =
         combine(
             firebaseDataSource.observeMessages(),
@@ -55,7 +53,6 @@ class MessageRepositoryImpl @Inject constructor(
                 if (cause is IOException) emit(emptyPreferences()) else throw cause
             }
             .map { prefs -> prefs.toLocalMessageList() }
-            .onStart { emit(emptyList()) }
 
     private fun mergeMessages(
         firebaseMessages: List<MessageEntity>,
@@ -69,12 +66,8 @@ class MessageRepositoryImpl @Inject constructor(
         return (firebaseMessages + nonDuplicateLocals).sortedBy { it.timestamp }
     }
 
-    // ── sendMessage ───────────────────────────────────────────────────────────
-
     override suspend fun sendMessage(message: MessageEntity): Result<String> =
         firebaseDataSource.sendMessage(message)
-
-    // ── loadOlderMessages ─────────────────────────────────────────────────────
 
     override suspend fun loadOlderMessages(
         beforeTimestamp: Long,
@@ -85,8 +78,6 @@ class MessageRepositoryImpl @Inject constructor(
             limit = limit,
         )
 
-    // ── deleteMessage ─────────────────────────────────────────────────────────
-
     override suspend fun deleteMessage(
         firebaseKey: String,
         localId: String,
@@ -95,16 +86,14 @@ class MessageRepositoryImpl @Inject constructor(
         firebaseDataSource.deleteMessage(firebaseKey)
             .getOrElse { throw it }
 
-        // Only delete associated media if it is NOT a text message
         if (type != MessageType.TEXT) {
             firebaseStorageDataSource.deleteMediaForMessage(localId)
+                .getOrElse { throw it }
         }
 
         clearPendingMessage(localId)
             .getOrElse { throw it }
     }
-
-    // ── saveMessageLocally ────────────────────────────────────────────────────
 
     override suspend fun saveMessageLocally(message: MessageEntity): Result<Unit> =
         runCatching {
@@ -132,8 +121,6 @@ class MessageRepositoryImpl @Inject constructor(
         Unit
     }
 
-    // ── getPendingMessages ────────────────────────────────────────────────────
-
     override suspend fun getPendingMessages(): Result<List<MessageEntity>> =
         runCatching {
             dataStore.data
@@ -144,15 +131,11 @@ class MessageRepositoryImpl @Inject constructor(
                 .sortedBy { it.timestamp }
         }
 
-    // ── clearPendingMessage ───────────────────────────────────────────────────
-
     override suspend fun clearPendingMessage(localId: String): Result<Unit> =
         runCatching {
             dataStore.edit { prefs -> prefs.remove(pendingKey(localId)) }
             Unit
         }
-
-    // ── getLocalMessages ──────────────────────────────────────────────────────
 
     override suspend fun getLocalMessages(): Result<List<MessageEntity>> =
         runCatching {
@@ -162,8 +145,6 @@ class MessageRepositoryImpl @Inject constructor(
                 .first()
                 .sortedBy { it.timestamp }
         }
-
-    // ── Typing Presence ───────────────────────────────────────────────────────
 
     override fun observeTypingUsers(): Flow<Map<String, String>> =
         firebaseDataSource.observeTypingUsers()
@@ -175,8 +156,6 @@ class MessageRepositoryImpl @Inject constructor(
     ): Result<Unit> =
         firebaseDataSource.setTypingStatus(uid, displayName, isTyping)
 
-    // ── DataStore helpers ─────────────────────────────────────────────────────
-
     private fun Preferences.toLocalMessageList(): List<MessageEntity> =
         asMap()
             .entries
@@ -187,8 +166,6 @@ class MessageRepositoryImpl @Inject constructor(
                 }.getOrNull()
             }
 }
-
-// ── Serialization bridge ──────────────────────────────────────────────────────
 
 @Serializable
 private data class MessageSerializable(
