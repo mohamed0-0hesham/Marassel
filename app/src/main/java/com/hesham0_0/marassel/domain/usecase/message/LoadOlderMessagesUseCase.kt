@@ -19,7 +19,7 @@ class LoadOlderMessagesUseCase @Inject constructor(
 
     suspend operator fun invoke(
         beforeTimestamp: Long,
-        limit: Int = DEFAULT_PAGE_SIZE,
+        limit: Int,
     ): LoadOlderResult {
 
         // Step 1 — Validate inputs

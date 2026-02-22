@@ -88,6 +88,8 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.bundles.compose)
     implementation(libs.google.googleid)
+    implementation(libs.junit.ktx)
+    implementation(libs.androidx.work.testing)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 
