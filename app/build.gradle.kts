@@ -65,12 +65,13 @@ android {
     }
 
     packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            excludes += "/META-INF/LICENSE.md"
-            excludes += "/META-INF/LICENSE-notice.md"
-            excludes += "META-INF/gradle/incremental.annotation.processors"
-        }
+        resources.excludes += setOf(
+            "/META-INF/{AL2.0,LGPL2.1}",
+            "META-INF/LICENSE.md",
+            "META-INF/LICENSE-notice.md",
+            "META-INF/NOTICE.md",
+            "META-INF/gradle/incremental.annotation.processors"
+        )
     }
 
     testOptions {
@@ -90,6 +91,7 @@ dependencies {
     implementation(libs.google.googleid)
     implementation(libs.junit.ktx)
     implementation(libs.androidx.work.testing)
+    implementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 
@@ -137,4 +139,50 @@ dependencies {
     androidTestImplementation(libs.bundles.testing.android)
     androidTestImplementation(libs.work.testing)
     kspAndroidTest(libs.hilt.android.compiler)
+
+    // JUnit 4 runner
+    testImplementation("junit:junit:4.13.2")
+
+    // Kotlin coroutines test utilities (runTest, TestDispatcher, etc.)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+
+    // MockK — Kotlin-first mocking: coEvery, coVerify, slot, Ordering
+    testImplementation("io.mockk:mockk:1.13.12")
+
+    // Turbine — structured Flow testing (await, cancel, etc.)
+    testImplementation("app.cash.turbine:turbine:1.1.0")
+
+    // Robolectric — JVM Android stubs for WorkDataUtils (android.net.Uri)
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("androidx.test:core-ktx:1.6.1")
+
+    // DataStore (available to test via direct Preferences construction)
+    testImplementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // ════════════════════════════════════════════════════════════════════════
+    // Instrumented + UI Tests  (androidTest/)
+    // ════════════════════════════════════════════════════════════════════════
+
+    // JUnit 4 runner for instrumented tests
+    androidTestImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.1")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+
+    // Kotlin coroutines test
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+
+    // MockK for Android (instrumented)
+    androidTestImplementation("io.mockk:mockk-android:1.13.12")
+
+    // WorkManager testing — TestListenableWorkerBuilder
+    androidTestImplementation("androidx.work:work-testing:2.9.1")
+
+    // Compose UI testing
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    // Hilt testing (if using @HiltAndroidTest for future E2E tests)
+    androidTestImplementation("com.google.dagger:hilt-android-testing:2.51.1")
+    kspAndroidTest("com.google.dagger:hilt-android-compiler:2.51.1")
 }
