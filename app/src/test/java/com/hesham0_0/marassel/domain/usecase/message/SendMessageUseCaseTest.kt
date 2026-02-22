@@ -39,26 +39,26 @@ class SendMessageUseCaseTest {
     // ── Test fixtures ─────────────────────────────────────────────────────────
 
     private val authUser = AuthUser(
-        uid             = "uid-alice",
-        email           = "alice@example.com",
-        displayName     = "Alice",
-        photoUrl        = null,
+        uid = "uid-alice",
+        email = "alice@example.com",
+        displayName = "Alice",
+        photoUrl = null,
         isEmailVerified = true,
-        provider        = AuthProvider.EMAIL_PASSWORD,
+        provider = AuthProvider.EMAIL_PASSWORD,
     )
 
     private val userProfile = UserEntity(
-        uid      = "uid-alice",
+        uid = "uid-alice",
         username = "Alice",
-        email    = "alice@example.com",
+        email = "alice@example.com",
         photoUrl = null,
         initials = "A",
     )
 
     @Before
     fun setUp() {
-        authRepository    = mockk()
-        userRepository    = mockk()
+        authRepository = mockk()
+        userRepository = mockk()
         messageRepository = mockk()
         useCase = SendMessageUseCase(authRepository, userRepository, messageRepository)
 
@@ -77,8 +77,8 @@ class SendMessageUseCaseTest {
         val result = useCase("Hello, World!") as SendMessageResult.Success
 
         assertEquals("Hello, World!", result.message.text)
-        assertEquals("uid-alice",    result.message.senderUid)
-        assertEquals("Alice",        result.message.senderName)
+        assertEquals("uid-alice", result.message.senderUid)
+        assertEquals("Alice", result.message.senderName)
         assertEquals(MessageType.TEXT, result.message.type)
         assertEquals(MessageStatus.PENDING, result.message.status)
     }
@@ -235,7 +235,9 @@ class SendMessageUseCaseTest {
     @Test
     fun `sendMedia entity has correct mimeType`() = runTest {
         val capturedMsg = slot<MessageEntity>()
-        coEvery { messageRepository.saveMessageLocally(capture(capturedMsg)) } returns Result.success(Unit)
+        coEvery { messageRepository.saveMessageLocally(capture(capturedMsg)) } returns Result.success(
+            Unit
+        )
 
         useCase.sendMedia("image/png", 2048L)
 

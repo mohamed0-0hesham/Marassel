@@ -313,7 +313,7 @@ class WorkDataUtilsTest {
     fun `extractMediaUrls returns list of URLs from valid JSON`() {
         val urls = listOf("https://example.com/a.jpg", "https://example.com/b.jpg")
         val json = kotlinx.serialization.json.Json.encodeToString(
-            kotlinx.serialization.builtins.ListSerializer(kotlinx.serialization.builtins.serializer()),
+            kotlinx.serialization.builtins.ListSerializer(serializer()),
             urls,
         )
         val data = workDataOf(WorkerKeys.KEY_MEDIA_URLS to json)
@@ -340,5 +340,5 @@ class WorkDataUtilsTest {
 }
 
 // Extension helper for Robolectric — String serializer shorthand
-private fun kotlinx.serialization.builtins.serializer(): kotlinx.serialization.KSerializer<String> =
-    kotlinx.serialization.builtins.serializer()
+private fun serializer(): kotlinx.serialization.KSerializer<String> =
+    serializer()

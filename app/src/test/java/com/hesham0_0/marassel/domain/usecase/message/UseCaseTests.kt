@@ -9,6 +9,7 @@ import com.hesham0_0.marassel.domain.repository.AuthRepository
 import com.hesham0_0.marassel.domain.repository.MessageRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -36,22 +37,28 @@ class DeleteMessageUseCaseTest {
     private lateinit var useCase: DeleteMessageUseCase
 
     private val currentUser = AuthUser(
-        uid             = "uid-alice",
-        email           = "alice@example.com",
-        displayName     = "Alice",
-        photoUrl        = null,
+        uid = "uid-alice",
+        email = "alice@example.com",
+        displayName = "Alice",
+        photoUrl = null,
         isEmailVerified = true,
-        provider        = AuthProvider.EMAIL_PASSWORD,
+        provider = AuthProvider.EMAIL_PASSWORD,
     )
 
     @Before
     fun setUp() {
-        authRepository    = mockk()
+        authRepository = mockk()
         messageRepository = mockk()
         useCase = DeleteMessageUseCase(authRepository, messageRepository)
 
         coEvery { authRepository.getCurrentUser() } returns currentUser
-        coEvery { messageRepository.deleteMessage(any(), any(), any()) } returns Result.success(Unit)
+        coEvery {
+            messageRepository.deleteMessage(
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(Unit)
     }
 
     @Test
@@ -70,9 +77,9 @@ class DeleteMessageUseCaseTest {
 
         assertTrue(result is DeleteResult.NotOwner)
         val notOwner = result as DeleteResult.NotOwner
-        assertEquals("uid-other",  notOwner.ownerUid)
-        assertEquals("uid-alice",  notOwner.currentUserUid)
-        assertEquals("local-1",    notOwner.messageLocalId)
+        assertEquals("uid-other", notOwner.ownerUid)
+        assertEquals("uid-alice", notOwner.currentUserUid)
+        assertEquals("local-1", notOwner.messageLocalId)
     }
 
     @Test
@@ -139,16 +146,16 @@ class RetryMessageUseCaseTest {
     private lateinit var useCase: RetryMessageUseCase
 
     private fun failedMsg(localId: String = "local-1") = MessageEntity(
-        localId     = localId,
+        localId = localId,
         firebaseKey = null,
-        senderUid   = "uid-1",
-        senderName  = "Alice",
-        text        = "Retry me",
-        mediaUrl    = null,
-        mediaType   = null,
-        timestamp   = 1_000L,
-        status      = MessageStatus.FAILED,
-        type        = MessageType.TEXT,
+        senderUid = "uid-1",
+        senderName = "Alice",
+        text = "Retry me",
+        mediaUrl = null,
+        mediaType = null,
+        timestamp = 1_000L,
+        status = MessageStatus.FAILED,
+        type = MessageType.TEXT,
     )
 
     @Before
@@ -213,7 +220,13 @@ class RetryMessageUseCaseTest {
     @Test
     fun `success resets message status to PENDING`() = runTest {
         coEvery { messageRepository.getLocalMessages() } returns Result.success(listOf(failedMsg()))
-        coEvery { messageRepository.updateMessageStatus(any(), any(), any()) } returns Result.success(Unit)
+        coEvery {
+            messageRepository.updateMessageStatus(
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(Unit)
 
         val result = useCase("local-1") as RetryMessageResult.Success
 
@@ -226,11 +239,23 @@ class RetryMessageUseCaseTest {
     fun `success preserves existing firebaseKey during status reset`() = runTest {
         val msgWithKey = failedMsg().copy(firebaseKey = "fb-existing")
         coEvery { messageRepository.getLocalMessages() } returns Result.success(listOf(msgWithKey))
-        coEvery { messageRepository.updateMessageStatus(any(), any(), any()) } returns Result.success(Unit)
+        coEvery {
+            messageRepository.updateMessageStatus(
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(Unit)
 
         useCase("local-1")
 
-        coVerify { messageRepository.updateMessageStatus("local-1", MessageStatus.PENDING, "fb-existing") }
+        coVerify {
+            messageRepository.updateMessageStatus(
+                "local-1",
+                MessageStatus.PENDING,
+                "fb-existing"
+            )
+        }
     }
 
     @Test
@@ -258,16 +283,16 @@ class LoadOlderMessagesUseCaseTest {
     private lateinit var useCase: LoadOlderMessagesUseCase
 
     private fun msg(localId: String, timestamp: Long) = MessageEntity(
-        localId     = localId,
+        localId = localId,
         firebaseKey = "fb-$localId",
-        senderUid   = "uid-1",
-        senderName  = "Alice",
-        text        = "Message",
-        mediaUrl    = null,
-        mediaType   = null,
-        timestamp   = timestamp,
-        status      = MessageStatus.SENT,
-        type        = MessageType.TEXT,
+        senderUid = "uid-1",
+        senderName = "Alice",
+        text = "Message",
+        mediaUrl = null,
+        mediaType = null,
+        timestamp = timestamp,
+        status = MessageStatus.SENT,
+        type = MessageType.TEXT,
     )
 
     @Before
@@ -296,7 +321,12 @@ class LoadOlderMessagesUseCaseTest {
 
     @Test
     fun `clamps limit below MIN_PAGE_SIZE to 1`() = runTest {
-        coEvery { messageRepository.loadOlderMessages(any(), 1) } returns Result.success(emptyList())
+        coEvery {
+            messageRepository.loadOlderMessages(
+                any(),
+                1
+            )
+        } returns Result.success(emptyList())
 
         useCase(5_000L, 0)
 
@@ -305,7 +335,12 @@ class LoadOlderMessagesUseCaseTest {
 
     @Test
     fun `clamps limit above MAX_PAGE_SIZE to 100`() = runTest {
-        coEvery { messageRepository.loadOlderMessages(any(), 100) } returns Result.success(emptyList())
+        coEvery {
+            messageRepository.loadOlderMessages(
+                any(),
+                100
+            )
+        } returns Result.success(emptyList())
 
         useCase(5_000L, 999)
 
@@ -314,7 +349,12 @@ class LoadOlderMessagesUseCaseTest {
 
     @Test
     fun `passes DEFAULT_PAGE_SIZE (20) unchanged`() = runTest {
-        coEvery { messageRepository.loadOlderMessages(any(), 20) } returns Result.success(emptyList())
+        coEvery {
+            messageRepository.loadOlderMessages(
+                any(),
+                20
+            )
+        } returns Result.success(emptyList())
 
         useCase(5_000L, LoadOlderMessagesUseCase.DEFAULT_PAGE_SIZE)
 
@@ -324,7 +364,9 @@ class LoadOlderMessagesUseCaseTest {
     @Test
     fun `sorts returned messages by timestamp ascending`() = runTest {
         val messages = listOf(msg("m3", 3_000L), msg("m1", 1_000L), msg("m2", 2_000L))
-        coEvery { messageRepository.loadOlderMessages(any(), any()) } returns Result.success(messages)
+        coEvery { messageRepository.loadOlderMessages(any(), any()) } returns Result.success(
+            messages
+        )
 
         val result = (useCase(5_000L, 20) as LoadOlderResult.Success).data
 
@@ -355,7 +397,9 @@ class LoadOlderMessagesUseCaseTest {
 
     @Test
     fun `hasReachedEnd is true for empty result`() = runTest {
-        coEvery { messageRepository.loadOlderMessages(any(), any()) } returns Result.success(emptyList())
+        coEvery { messageRepository.loadOlderMessages(any(), any()) } returns Result.success(
+            emptyList()
+        )
 
         val result = (useCase(5_000L, 20) as LoadOlderResult.Success).data
 
@@ -366,7 +410,9 @@ class LoadOlderMessagesUseCaseTest {
     @Test
     fun `cursor is timestamp of oldest (first sorted) message`() = runTest {
         val messages = listOf(msg("m2", 2_000L), msg("m1", 1_000L))
-        coEvery { messageRepository.loadOlderMessages(any(), any()) } returns Result.success(messages)
+        coEvery { messageRepository.loadOlderMessages(any(), any()) } returns Result.success(
+            messages
+        )
 
         val result = (useCase(5_000L, 20) as LoadOlderResult.Success).data
 
@@ -375,7 +421,9 @@ class LoadOlderMessagesUseCaseTest {
 
     @Test
     fun `cursor is null for empty result`() = runTest {
-        coEvery { messageRepository.loadOlderMessages(any(), any()) } returns Result.success(emptyList())
+        coEvery { messageRepository.loadOlderMessages(any(), any()) } returns Result.success(
+            emptyList()
+        )
 
         val result = (useCase(5_000L, 20) as LoadOlderResult.Success).data
 
@@ -412,43 +460,41 @@ class ObserveMessagesUseCaseTest {
     private val currentUid = "uid-alice"
 
     private val aliceUser = AuthUser(
-        uid             = currentUid,
-        email           = "alice@test.com",
-        displayName     = "Alice",
-        photoUrl        = null,
+        uid = currentUid,
+        email = "alice@test.com",
+        displayName = "Alice",
+        photoUrl = null,
         isEmailVerified = true,
-        provider        = AuthProvider.EMAIL_PASSWORD,
+        provider = AuthProvider.EMAIL_PASSWORD,
     )
 
     private fun msg(
-        localId:   String        = "msg-1",
-        senderUid: String        = currentUid,
-        timestamp: Long          = System.currentTimeMillis(),
-        status:    MessageStatus = MessageStatus.SENT,
+        localId: String = "msg-1",
+        senderUid: String = currentUid,
+        timestamp: Long = System.currentTimeMillis(),
+        status: MessageStatus = MessageStatus.SENT,
     ) = MessageEntity(
-        localId     = localId,
+        localId = localId,
         firebaseKey = "fb-$localId",
-        senderUid   = senderUid,
-        senderName  = if (senderUid == currentUid) "Alice" else "Bob",
-        text        = "Hello",
-        mediaUrl    = null,
-        mediaType   = null,
-        timestamp   = timestamp,
-        status      = status,
-        type        = MessageType.TEXT,
+        senderUid = senderUid,
+        senderName = if (senderUid == currentUid) "Alice" else "Bob",
+        text = "Hello",
+        mediaUrl = null,
+        mediaType = null,
+        timestamp = timestamp,
+        status = status,
+        type = MessageType.TEXT,
     )
 
     @Before
     fun setUp() {
         messageRepository = mockk()
-        authRepository    = mockk()
+        authRepository = mockk()
         useCase = ObserveMessagesUseCase(messageRepository, authRepository)
 
         coEvery { authRepository.getCurrentUser() } returns aliceUser
         every { messageRepository.observeMessages() } returns flowOf(emptyList())
     }
-
-    private fun every(block: () -> Unit) = block()
 
     @Test
     fun `emits empty list when repository emits empty list`() = runTest {
@@ -494,7 +540,7 @@ class ObserveMessagesUseCaseTest {
     @Test
     fun `showSenderInfo resets when sender changes`() = runTest {
         val messages = listOf(
-            msg("m1", "uid-bob",   1_000L),
+            msg("m1", "uid-bob", 1_000L),
             msg("m2", "uid-alice", 2_000L), // different sender
         )
         every { messageRepository.observeMessages() } returns flowOf(messages)

@@ -2,12 +2,7 @@ package com.hesham0_0.marassel.ui.chat
 
 // ── ChatInputBarTest ──────────────────────────────────────────────────────────
 
-import android.net.Uri
-import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -437,7 +432,7 @@ class ChatRoomComponentTest {
         composeTestRule.setContent {
             MarasselTheme {
                 androidx.compose.foundation.lazy.LazyColumn {
-                    androidx.compose.foundation.lazy.items(messages) { msg ->
+                    items(messages) { msg ->
                         MessageBubble(message = msg)
                     }
                 }
