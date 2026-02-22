@@ -12,6 +12,8 @@ import com.hesham0_0.marassel.worker.WorkDataUtils.toMessageEntity
 import com.hesham0_0.marassel.worker.WorkDataUtils.toSendMessageParams
 import com.hesham0_0.marassel.worker.WorkDataUtils.toUploadMediaParams
 import android.net.Uri
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -20,51 +22,30 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Unit tests for [WorkDataUtils].
- *
- * Tests run on the JVM with Robolectric to handle [android.net.Uri] which
- * requires Android stubs. Add to the `test/` source set (not androidTest/).
- *
- * Covers:
- * - [buildSendMessageInputData] uses KEY_CONTENT (not KEY_MESSAGE_TEXT)
- * - [toSendMessageParams] full round-trip deserialization
- * - [toSendMessageParams] returns null for missing required fields
- * - [toMessageEntity] maps params → entity correctly
- * - [buildUploadMediaInputData] / [toUploadMediaParams] round-trip
- * - [extractMediaUrls] JSON decode, empty/null guard
- * - [buildUploadSuccessOutput] correct keys
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE)
 class WorkDataUtilsTest {
 
-    // ── Fixtures ──────────────────────────────────────────────────────────────
-
     private val textEntity = MessageEntity(
-        localId     = "local-abc",
+        localId = "local-abc",
         firebaseKey = null,
-        senderUid   = "uid-1",
-        senderName  = "Alice",
-        text        = "Hello, World!",
-        mediaUrl    = null,
-        mediaType   = null,
-        timestamp   = 123_456_789L,
-        status      = MessageStatus.PENDING,
-        type        = MessageType.TEXT,
+        senderUid = "uid-1",
+        senderName = "Alice",
+        text = "Hello, World!",
+        mediaUrl = null,
+        mediaType = null,
+        timestamp = 123_456_789L,
+        status = MessageStatus.PENDING,
+        type = MessageType.TEXT,
     )
 
     private val imageEntity = textEntity.copy(
-        localId   = "local-img",
-        text      = null,
-        mediaUrl  = "https://cdn.example.com/img.jpg",
+        localId = "local-img",
+        text = null,
+        mediaUrl = "https://cdn.example.com/img.jpg",
         mediaType = "image/jpeg",
-        type      = MessageType.IMAGE,
+        type = MessageType.IMAGE,
     )
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // buildSendMessageInputData — KEY names
-    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     fun `buildSendMessageInputData writes KEY_LOCAL_ID`() {
@@ -87,7 +68,6 @@ class WorkDataUtilsTest {
     @Test
     fun `buildSendMessageInputData writes KEY_CONTENT (not KEY_MESSAGE_TEXT)`() {
         val data = buildSendMessageInputData(textEntity)
-        // KEY_CONTENT = "content"
         assertEquals("Hello, World!", data.getString(WorkerKeys.KEY_CONTENT))
     }
 
@@ -130,19 +110,15 @@ class WorkDataUtilsTest {
         assertTrue(urls.isEmpty())
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // toSendMessageParams — round-trip
-    // ══════════════════════════════════════════════════════════════════════════
-
     @Test
     fun `toSendMessageParams full round-trip for TEXT entity`() {
         val params = buildSendMessageInputData(textEntity).toSendMessageParams()!!
 
-        assertEquals("local-abc",     params.localId)
-        assertEquals("uid-1",         params.senderUid)
-        assertEquals("Alice",         params.senderName)
+        assertEquals("local-abc", params.localId)
+        assertEquals("uid-1", params.senderUid)
+        assertEquals("Alice", params.senderName)
         assertEquals("Hello, World!", params.content)
-        assertEquals(123_456_789L,    params.timestamp)
+        assertEquals(123_456_789L, params.timestamp)
         assertEquals(MessageType.TEXT, params.messageType)
         assertTrue(params.mediaUrls.isEmpty())
     }
@@ -151,18 +127,18 @@ class WorkDataUtilsTest {
     fun `toSendMessageParams full round-trip for IMAGE entity`() {
         val params = buildSendMessageInputData(imageEntity).toSendMessageParams()!!
 
-        assertEquals("local-img",                         params.localId)
-        assertEquals("image/jpeg",                        params.mediaType)
-        assertEquals(MessageType.IMAGE,                   params.messageType)
+        assertEquals("local-img", params.localId)
+        assertEquals("image/jpeg", params.mediaType)
+        assertEquals(MessageType.IMAGE, params.messageType)
         assertTrue(params.mediaUrls.contains("https://cdn.example.com/img.jpg"))
     }
 
     @Test
     fun `toSendMessageParams returns null when KEY_LOCAL_ID is missing`() {
         val data = workDataOf(
-            WorkerKeys.KEY_SENDER_UID  to "uid-1",
+            WorkerKeys.KEY_SENDER_UID to "uid-1",
             WorkerKeys.KEY_SENDER_NAME to "Alice",
-            WorkerKeys.KEY_CONTENT     to "hello",
+            WorkerKeys.KEY_CONTENT to "hello",
         )
         assertNull(data.toSendMessageParams())
     }
@@ -170,8 +146,8 @@ class WorkDataUtilsTest {
     @Test
     fun `toSendMessageParams returns null when KEY_LOCAL_ID is blank`() {
         val data = workDataOf(
-            WorkerKeys.KEY_LOCAL_ID    to "",
-            WorkerKeys.KEY_SENDER_UID  to "uid-1",
+            WorkerKeys.KEY_LOCAL_ID to "",
+            WorkerKeys.KEY_SENDER_UID to "uid-1",
             WorkerKeys.KEY_SENDER_NAME to "Alice",
         )
         assertNull(data.toSendMessageParams())
@@ -180,7 +156,7 @@ class WorkDataUtilsTest {
     @Test
     fun `toSendMessageParams returns null when KEY_SENDER_UID is missing`() {
         val data = workDataOf(
-            WorkerKeys.KEY_LOCAL_ID    to "local-1",
+            WorkerKeys.KEY_LOCAL_ID to "local-1",
             WorkerKeys.KEY_SENDER_NAME to "Alice",
         )
         assertNull(data.toSendMessageParams())
@@ -189,7 +165,7 @@ class WorkDataUtilsTest {
     @Test
     fun `toSendMessageParams returns null when KEY_SENDER_NAME is missing`() {
         val data = workDataOf(
-            WorkerKeys.KEY_LOCAL_ID   to "local-1",
+            WorkerKeys.KEY_LOCAL_ID to "local-1",
             WorkerKeys.KEY_SENDER_UID to "uid-1",
         )
         assertNull(data.toSendMessageParams())
@@ -198,10 +174,10 @@ class WorkDataUtilsTest {
     @Test
     fun `toSendMessageParams defaults timestamp to 0L when missing`() {
         val data = workDataOf(
-            WorkerKeys.KEY_LOCAL_ID    to "local-1",
-            WorkerKeys.KEY_SENDER_UID  to "uid-1",
+            WorkerKeys.KEY_LOCAL_ID to "local-1",
+            WorkerKeys.KEY_SENDER_UID to "uid-1",
             WorkerKeys.KEY_SENDER_NAME to "Alice",
-            WorkerKeys.KEY_CONTENT     to "Hello",
+            WorkerKeys.KEY_CONTENT to "Hello",
         )
         val params = data.toSendMessageParams()!!
         assertEquals(0L, params.timestamp)
@@ -210,30 +186,26 @@ class WorkDataUtilsTest {
     @Test
     fun `toSendMessageParams defaults messageType to TEXT for unknown type string`() {
         val data = workDataOf(
-            WorkerKeys.KEY_LOCAL_ID       to "local-1",
-            WorkerKeys.KEY_SENDER_UID     to "uid-1",
-            WorkerKeys.KEY_SENDER_NAME    to "Alice",
-            WorkerKeys.KEY_MESSAGE_TYPE   to "UNKNOWN_TYPE",
+            WorkerKeys.KEY_LOCAL_ID to "local-1",
+            WorkerKeys.KEY_SENDER_UID to "uid-1",
+            WorkerKeys.KEY_SENDER_NAME to "Alice",
+            WorkerKeys.KEY_MESSAGE_TYPE to "UNKNOWN_TYPE",
         )
         val params = data.toSendMessageParams()!!
         assertEquals(MessageType.TEXT, params.messageType)
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // toMessageEntity
-    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     fun `toMessageEntity maps all fields from SendMessageParams`() {
         val params = buildSendMessageInputData(textEntity).toSendMessageParams()!!
         val entity = params.toMessageEntity()
 
-        assertEquals("local-abc",          entity.localId)
-        assertEquals("uid-1",              entity.senderUid)
-        assertEquals("Alice",              entity.senderName)
-        assertEquals("Hello, World!",      entity.text)
+        assertEquals("local-abc", entity.localId)
+        assertEquals("uid-1", entity.senderUid)
+        assertEquals("Alice", entity.senderName)
+        assertEquals("Hello, World!", entity.text)
         assertEquals(MessageStatus.PENDING, entity.status)
-        assertEquals(MessageType.TEXT,     entity.type)
+        assertEquals(MessageType.TEXT, entity.type)
         assertNull(entity.firebaseKey)
     }
 
@@ -254,25 +226,21 @@ class WorkDataUtilsTest {
         assertNull(entity.text)
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // buildUploadMediaInputData / toUploadMediaParams
-    // ══════════════════════════════════════════════════════════════════════════
-
     @Test
     fun `buildUploadMediaInputData toUploadMediaParams round-trip`() {
-        val uri  = Uri.parse("content://media/external/images/1234")
+        val uri = Uri.parse("content://media/external/images/1234")
         val data = buildUploadMediaInputData("local-upload", uri, "image/png")
         val params = data.toUploadMediaParams()!!
 
         assertEquals("local-upload", params.localId)
         assertEquals(uri.toString(), params.mediaUri.toString())
-        assertEquals("image/png",    params.mimeType)
+        assertEquals("image/png", params.mimeType)
     }
 
     @Test
     fun `toUploadMediaParams returns null when KEY_LOCAL_ID is blank`() {
         val data = workDataOf(
-            WorkerKeys.KEY_LOCAL_ID  to "",
+            WorkerKeys.KEY_LOCAL_ID to "",
             WorkerKeys.KEY_MEDIA_URI to "content://media/1",
         )
         assertNull(data.toUploadMediaParams())
@@ -281,15 +249,11 @@ class WorkDataUtilsTest {
     @Test
     fun `toUploadMediaParams returns null when KEY_MEDIA_URI is blank`() {
         val data = workDataOf(
-            WorkerKeys.KEY_LOCAL_ID  to "local-1",
+            WorkerKeys.KEY_LOCAL_ID to "local-1",
             WorkerKeys.KEY_MEDIA_URI to "",
         )
         assertNull(data.toUploadMediaParams())
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // extractMediaUrls
-    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     fun `extractMediaUrls returns empty list when KEY_MEDIA_URLS is missing`() {
@@ -312,17 +276,10 @@ class WorkDataUtilsTest {
     @Test
     fun `extractMediaUrls returns list of URLs from valid JSON`() {
         val urls = listOf("https://example.com/a.jpg", "https://example.com/b.jpg")
-        val json = kotlinx.serialization.json.Json.encodeToString(
-            kotlinx.serialization.builtins.ListSerializer(serializer()),
-            urls,
-        )
+        val json = Json.encodeToString(urls)
         val data = workDataOf(WorkerKeys.KEY_MEDIA_URLS to json)
         assertEquals(urls, data.extractMediaUrls())
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // buildUploadSuccessOutput
-    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     fun `buildUploadSuccessOutput contains localId`() {
@@ -332,13 +289,9 @@ class WorkDataUtilsTest {
 
     @Test
     fun `buildUploadSuccessOutput contains downloadUrl in KEY_MEDIA_URLS`() {
-        val url    = "https://cdn.example.com/file.jpg"
+        val url = "https://cdn.example.com/file.jpg"
         val output = buildUploadSuccessOutput("local-1", url)
-        val urls   = output.extractMediaUrls()
+        val urls = output.extractMediaUrls()
         assertTrue(urls.contains(url))
     }
 }
-
-// Extension helper for Robolectric — String serializer shorthand
-private fun serializer(): kotlinx.serialization.KSerializer<String> =
-    serializer()

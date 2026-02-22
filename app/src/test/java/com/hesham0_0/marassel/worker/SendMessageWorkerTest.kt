@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.Data
 import androidx.work.ListenableWorker.Result
+import androidx.work.WorkerFactory
+import androidx.work.WorkerParameters
 import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.workDataOf
 import com.hesham0_0.marassel.domain.model.MessageEntity
@@ -24,26 +26,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.lang.reflect.Field
 import java.util.UUID
 
-/**
- * Instrumented unit tests for [SendMessageWorker].
- *
- * Run on a device/emulator (androidTest source set) because
- * [TestListenableWorkerBuilder] requires an Android [Context].
- *
- * All Firebase/repository calls are faked with MockK.
- * The worker's injected [MessageRepository] is set via reflection
- * because [SendMessageWorker] uses `@AssistedInject` — the Hilt worker
- * factory is not available in the WorkManager test harness, so we
- * bypass DI and inject the mock directly.
- *
- * Key worker constants validated here:
- * - Input key [WorkerKeys.KEY_CONTENT] (not KEY_MESSAGE_TEXT)
- * - MAX_ATTEMPTS = 3 (retry on attempt 0–1, fail on attempt 2+)
- * - Status sequence: PENDING → SENT (success) or PENDING → FAILED (exhausted)
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE)
 class SendMessageWorkerTest {
@@ -57,9 +41,6 @@ class SendMessageWorkerTest {
         messageRepository = mockk(relaxed = true)
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    /** Builds valid [Data] using the same helper the production code uses. */
     private fun validInput(
         localId: String = UUID.randomUUID().toString(),
         senderUid: String = "uid-1",
@@ -83,42 +64,25 @@ class SendMessageWorkerTest {
         return buildSendMessageInputData(entity)
     }
 
-    /**
-     * Creates a [SendMessageWorker] and injects [messageRepository] by
-     * reflection. [TestListenableWorkerBuilder] bypasses Hilt so the
-     * @AssistedInject factory is never called.
-     */
     private fun buildWorker(
         inputData: Data = validInput(),
         runAttemptCount: Int = 0,
     ): SendMessageWorker {
-        val worker = TestListenableWorkerBuilder<SendMessageWorker>(context)
+        val factory = object : WorkerFactory() {
+            override fun createWorker(
+                appContext: Context,
+                workerClassName: String,
+                workerParameters: WorkerParameters
+            ): androidx.work.ListenableWorker {
+                return SendMessageWorker(appContext, workerParameters, messageRepository)
+            }
+        }
+        return TestListenableWorkerBuilder<SendMessageWorker>(context)
             .setInputData(inputData)
             .setRunAttemptCount(runAttemptCount)
+            .setWorkerFactory(factory)
             .build()
-
-        injectField(worker, "messageRepository", messageRepository)
-        return worker
     }
-
-    /** Sets a private field on the worker via reflection. */
-    private fun injectField(target: Any, fieldName: String, value: Any) {
-        fun findField(cls: Class<*>, name: String): Field? =
-            try {
-                cls.getDeclaredField(name)
-            } catch (_: NoSuchFieldException) {
-                cls.superclass?.let { findField(it, name) }
-            }
-
-        val field = findField(target::class.java, fieldName)
-            ?: error("Field '$fieldName' not found on ${target::class.java.name}")
-        field.isAccessible = true
-        field.set(target, value)
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // Success path
-    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     fun `doWork returns Result_success when sendMessage succeeds`() = runTest {
@@ -142,7 +106,6 @@ class SendMessageWorkerTest {
 
         buildWorker(validInput(localId = localId)).doWork()
 
-        // PENDING must be set BEFORE sendMessage is called
         coVerify(ordering = Ordering.ORDERED) {
             messageRepository.updateMessageStatus(localId, MessageStatus.PENDING, null)
             messageRepository.sendMessage(any())
@@ -192,10 +155,6 @@ class SendMessageWorkerTest {
         assertEquals("Bob", captured.captured.senderName)
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // Retry path (attempts 0 and 1 of 3)
-    // ══════════════════════════════════════════════════════════════════════════
-
     @Test
     fun `doWork returns Result_retry on first attempt when sendMessage fails`() = runTest {
         coEvery { messageRepository.updateMessageStatus(any(), any(), any()) } returns
@@ -203,7 +162,6 @@ class SendMessageWorkerTest {
         coEvery { messageRepository.sendMessage(any()) } returns
                 kotlin.Result.failure(RuntimeException("timeout"))
 
-        // runAttemptCount = 0 → first attempt → should retry
         val result = buildWorker(runAttemptCount = 0).doWork()
 
         assertTrue("Expected retry but got: $result", result is Result.Retry)
@@ -216,15 +174,10 @@ class SendMessageWorkerTest {
         coEvery { messageRepository.sendMessage(any()) } returns
                 kotlin.Result.failure(RuntimeException("timeout"))
 
-        // runAttemptCount = 1 → second attempt → still below MAX_ATTEMPTS - 1 = 2 → retry
         val result = buildWorker(runAttemptCount = 1).doWork()
 
         assertTrue("Expected retry but got: $result", result is Result.Retry)
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // Failure path (attempt 2 = MAX_ATTEMPTS - 1)
-    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     fun `doWork returns Result_failure after all 3 attempts exhausted`() = runTest {
@@ -233,7 +186,6 @@ class SendMessageWorkerTest {
         coEvery { messageRepository.sendMessage(any()) } returns
                 kotlin.Result.failure(RuntimeException("unreachable host"))
 
-        // runAttemptCount = 2 → third attempt = MAX_ATTEMPTS - 1 → give up
         val result = buildWorker(runAttemptCount = 2).doWork()
 
         assertTrue("Expected failure but got: $result", result is Result.Failure)
@@ -262,17 +214,12 @@ class SendMessageWorkerTest {
         coEvery { messageRepository.sendMessage(any()) } returns
                 kotlin.Result.failure(RuntimeException("error"))
 
-        // First attempt — should retry, not fail
         buildWorker(inputData = validInput(localId = localId), runAttemptCount = 0).doWork()
 
         coVerify(exactly = 0) {
             messageRepository.updateMessageStatus(localId, MessageStatus.FAILED, any())
         }
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // Missing / malformed input
-    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     fun `doWork returns Result_failure when input data is empty`() = runTest {
@@ -284,7 +231,6 @@ class SendMessageWorkerTest {
 
     @Test
     fun `doWork returns Result_failure when localId is blank`() = runTest {
-        // Build data manually with blank localId — bypasses buildSendMessageInputData helper
         val badInput = workDataOf(
             WorkerKeys.KEY_LOCAL_ID to "",
             WorkerKeys.KEY_SENDER_UID to "uid-1",
@@ -319,10 +265,6 @@ class SendMessageWorkerTest {
         coVerify(exactly = 0) { messageRepository.sendMessage(any()) }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // WorkDataUtils integration — KEY_CONTENT key is used (not KEY_MESSAGE_TEXT)
-    // ══════════════════════════════════════════════════════════════════════════
-
     @Test
     fun `buildSendMessageInputData uses KEY_CONTENT for text field`() {
         val entity = MessageEntity(
@@ -339,7 +281,6 @@ class SendMessageWorkerTest {
         )
         val data = buildSendMessageInputData(entity)
 
-        // KEY_CONTENT = "content" — this is what SendMessageWorker reads via toSendMessageParams()
         val content = data.getString(WorkerKeys.KEY_CONTENT)
         assertEquals("Test text", content)
     }
@@ -368,10 +309,6 @@ class SendMessageWorkerTest {
         assertEquals(999_000L, params.timestamp)
         assertEquals(MessageType.TEXT, params.messageType)
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // getForegroundInfo — does not throw
-    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     fun `getForegroundInfo returns ForegroundInfo without throwing`() = runTest {
