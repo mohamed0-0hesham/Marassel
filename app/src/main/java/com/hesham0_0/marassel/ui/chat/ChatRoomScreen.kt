@@ -54,6 +54,7 @@ import com.hesham0_0.marassel.ui.chat.components.ChatInputBar
 import com.hesham0_0.marassel.ui.chat.components.MessageBubble
 import com.hesham0_0.marassel.ui.chat.components.MessageContextMenu
 import com.hesham0_0.marassel.ui.media.MediaPickerBottomSheet
+import com.hesham0_0.marassel.worker.NotificationPermissionHandler
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
@@ -86,6 +87,7 @@ fun ChatRoomScreen(
             totalItems == 0 || lastVisible >= totalItems - 3
         }
     }
+    NotificationPermissionHandler()
 
     LaunchedEffect(Unit) {
         viewModel.effects.collectLatest { effect ->
@@ -145,7 +147,6 @@ fun ChatRoomScreen(
                     )
                 },
                 actions = {
-                    // Add the Avatar icon to the TopAppBar
                     state.currentUser?.let { user ->
                         IconButton(onClick = { showLogoutDialog = true }) {
                             AvatarInitials(
@@ -194,7 +195,6 @@ fun ChatRoomScreen(
                 reverseLayout = false,
             ) {
 
-                // ── CHAT-052: Header — loading indicator or end-of-history ───
                 item(key = "header") {
                     when {
                         state.isLoadingOlder -> LinearProgressIndicator(

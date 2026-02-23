@@ -35,6 +35,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
+import androidx.core.net.toUri
 
 @HiltViewModel
 class ChatRoomViewModel @Inject constructor(
@@ -87,32 +88,28 @@ class ChatRoomViewModel @Inject constructor(
                         emptyList()
                     } else {
                         val incomingOldest = models.minOf { it.timestamp }
-                        // Keep paginated messages that are older than the real-time window.
-                        // This naturally drops deleted messages inside the real-time window.
                         val paginated = messages.filter { it.timestamp < incomingOldest }
                         (paginated + models).distinctBy { it.localId }.sortedBy { it.timestamp }
                     }
-                    
+
                     val finalized = recalculateUiFlags(combined)
-                    
+
                     copy(
                         messages = mergeWithProgress(finalized),
                     )
                 }
 
-                // Scroll to bottom on first load or when a new message arrives at the bottom.
-                // This prevents flashing or jumping when old messages are loaded or items are deleted.
                 val isInitialLoad = currentState.isLoadingInitial
                 val newLastId = models.lastOrNull()?.localId
                 val oldLastId = oldMessages.lastOrNull()?.localId
-                
+
                 if (isInitialLoad || (newLastId != null && newLastId != oldLastId && models.size >= oldMessages.size)) {
                     setEffect(ChatUiEffect.ScrollToBottom)
                 }
             }
             .launchIn(viewModelScope)
     }
-    
+
     private fun observeTyping() {
         observeTypingUsersUseCase()
             .onEach { users -> setState { copy(typingUsers = users) } }
@@ -125,7 +122,6 @@ class ChatRoomViewModel @Inject constructor(
                 setState { copy(isLoadingInitial = false) }
             }
 
-            // Input
             is ChatUiEvent.MessageInputChanged -> {
                 setState {
                     copy(
@@ -148,11 +144,9 @@ class ChatRoomViewModel @Inject constructor(
             ChatUiEvent.AttachmentClicked -> setState { copy(showMediaPicker = true) }
             ChatUiEvent.MediaPickerDismissed -> setState { copy(showMediaPicker = false) }
 
-            // Send
             ChatUiEvent.SendTextClicked -> onSendText()
             is ChatUiEvent.SendMediaClicked -> onSendMedia(event.uris)
 
-            // Message actions
             is ChatUiEvent.RetryMessageClicked -> onRetryMessage(event.localId)
             is ChatUiEvent.DeleteMessageClicked -> onDeleteMessage(
                 event.localId,
@@ -164,10 +158,8 @@ class ChatRoomViewModel @Inject constructor(
             is ChatUiEvent.MessageLongPressed -> setState { copy(selectedMessageLocalId = event.localId) }
             ChatUiEvent.DismissMessageContextMenu -> setState { copy(selectedMessageLocalId = null) }
 
-            // Pagination
             ChatUiEvent.LoadOlderMessages -> onLoadOlderMessages()
 
-            // Misc
             ChatUiEvent.DismissError -> setState { copy(error = null) }
 
             ChatUiEvent.LogoutClicked -> onLogout()
@@ -182,14 +174,13 @@ class ChatRoomViewModel @Inject constructor(
             )
         }
     }
-    
+
     private fun handleTypingState(text: String) {
         typingJob?.cancel()
-        
+
         if (text.isNotEmpty()) {
             launch { setTypingStatusUseCase(isTyping = true) }
-            
-            // Automatically stop typing indicator after 3 seconds of inactivity
+
             typingJob = viewModelScope.launch {
                 delay(3000)
                 setTypingStatusUseCase(isTyping = false)
@@ -203,17 +194,14 @@ class ChatRoomViewModel @Inject constructor(
         val text = currentState.inputText.trim()
         if (text.isBlank()) return
 
-        // Clear input immediately for responsive feel
         setState { copy(inputText = "") }
-        
-        // Stop typing indicator
+
         typingJob?.cancel()
         launch { setTypingStatusUseCase(isTyping = false) }
 
         launch {
             when (val result = sendMessageUseCase(text)) {
                 is SendMessageResult.Success -> {
-                    // Enqueue WorkManager job and start observing its status
                     val workRequest = orchestrator.enqueueTextMessage(result.message)
                     observeWorkStatus(
                         localId = result.message.localId,
@@ -222,7 +210,6 @@ class ChatRoomViewModel @Inject constructor(
                 }
 
                 is SendMessageResult.ValidationFailed -> {
-                    // Restore text so user can fix it
                     setState { copy(inputText = text) }
                     setEffect(
                         ChatUiEffect.ShowSnackbar(
@@ -261,13 +248,12 @@ class ChatRoomViewModel @Inject constructor(
                         size = cursor.getLong(sizeIndex)
                     }
                 }
-                
-                // Fallback if the content resolver doesn't provide the file size
+
                 if (size == 0L) size = 1L
 
                 when (val result = sendMessageUseCase.sendMedia(
                     mimeType = mimeType,
-                    fileSizeBytes = size, 
+                    fileSizeBytes = size,
                 )) {
                     is SendMessageResult.Success -> {
                         val (uploadRequest, sendRequest) = orchestrator.enqueueMediaMessage(
@@ -275,12 +261,10 @@ class ChatRoomViewModel @Inject constructor(
                             mediaUri = uri,
                             mimeType = mimeType,
                         )
-                        // Observe upload progress separately
                         observeUploadProgress(
                             localId = result.message.localId,
                             workRequestId = uploadRequest.id,
                         )
-                        // Observe final send status
                         observeWorkStatus(
                             localId = result.message.localId,
                             workRequestId = sendRequest.id,
@@ -307,11 +291,20 @@ class ChatRoomViewModel @Inject constructor(
             when (val result = retryMessageUseCase(localId)) {
                 is RetryMessageResult.Success -> {
                     val message = result.message
-                    val workRequest = orchestrator.enqueueTextMessage(message)
-                    observeWorkStatus(
-                        localId = localId,
-                        workRequestId = workRequest.id,
+
+                    val mediaUri = message.mediaUrl?.toUri()
+                    val requests = orchestrator.retryMessage(
+                        message = message,
+                        mediaUri = mediaUri,
+                        mimeType = message.mediaType
                     )
+
+                    if (requests.size == 2) {
+                        observeUploadProgress(localId, requests[0].id)
+                        observeWorkStatus(localId, requests[1].id)
+                    } else if (requests.isNotEmpty()) {
+                        observeWorkStatus(localId, requests[0].id)
+                    }
                 }
 
                 is RetryMessageResult.MessageNotFound -> {
@@ -340,8 +333,7 @@ class ChatRoomViewModel @Inject constructor(
             )
             when (result) {
                 is DeleteResult.Success -> {
-                    // Immediately remove from UI state for instant feedback
-                    setState { 
+                    setState {
                         copy(messages = messages.filter { it.localId != localId })
                     }
                 }
@@ -379,7 +371,6 @@ class ChatRoomViewModel @Inject constructor(
                         ).toUiModel(user)
                     }
 
-                    // Update cursor to the oldest message we now have
                     models.minOfOrNull { it.timestamp }?.let { ts ->
                         if (ts < oldestTimestamp) oldestTimestamp = ts
                     }
@@ -388,9 +379,9 @@ class ChatRoomViewModel @Inject constructor(
                         val combined = (models + messages)
                             .distinctBy { it.localId }
                             .sortedBy { it.timestamp }
-                        
+
                         val finalized = recalculateUiFlags(combined)
-                        
+
                         copy(
                             messages = mergeWithProgress(finalized),
                             isLoadingOlder = false,
@@ -408,17 +399,14 @@ class ChatRoomViewModel @Inject constructor(
     }
 
     private fun observeWorkStatus(localId: String, workRequestId: UUID) {
-        // Cancel any previous observation for this localId
         activeWorkJobs[localId]?.cancel()
 
         val job = workInfoBridge
             .observeMessageStatus(localId, workRequestId)
             .onEach { update: MessageStatusUpdate ->
-                // Update UI immediately via message list rebuild
                 updateMessageProgress(localId, progress = null)
 
                 if (update.isTerminal) {
-                    // Stop observing — no more state changes expected
                     activeWorkJobs.remove(localId)?.cancel()
                 }
             }
@@ -447,7 +435,7 @@ class ChatRoomViewModel @Inject constructor(
             else model
         }
     }
-    
+
     private fun recalculateUiFlags(models: List<MessageUiModel>): List<MessageUiModel> {
         if (models.isEmpty()) return emptyList()
 
