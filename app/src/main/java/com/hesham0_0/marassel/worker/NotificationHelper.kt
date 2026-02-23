@@ -68,17 +68,6 @@ object NotificationHelper {
         )
         .build()
 
-    // ── Failed message notification ───────────────────────────────────────────
-
-    /**
-     * Builds an actionable notification for a failed message.
-     *
-     * Actions:
-     * - Retry  → [RetryMessageReceiver] broadcasts to re-enqueue the worker
-     * - Dismiss → cancels the notification (implicit on tap)
-     *
-     * Tapping the notification body opens the app.
-     */
     fun buildFailedMessageNotification(
         context: Context,
         localId: String,

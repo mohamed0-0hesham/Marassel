@@ -4,12 +4,51 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.work.WorkManager
+import com.hesham0_0.marassel.domain.model.MessageStatus
+import com.hesham0_0.marassel.domain.repository.MessageRepository
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class CancelUploadReceiver : BroadcastReceiver() {
+
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface CancelUploadEntryPoint {
+        fun messageRepository(): MessageRepository
+    }
 
     override fun onReceive(context: Context, intent: Intent) {
         val localId = intent.getStringExtra(EXTRA_LOCAL_ID) ?: return
         WorkManager.getInstance(context).cancelUniqueWork(localId)
+
+        NotificationHelper.cancelUploadNotification(context)
+
+        val pendingResult = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                val appContext = context.applicationContext
+                val entryPoint = EntryPointAccessors.fromApplication(
+                    appContext,
+                    CancelUploadEntryPoint::class.java
+                )
+                val messageRepository = entryPoint.messageRepository()
+                messageRepository.updateMessageStatus(
+                    localId = localId,
+                    status = MessageStatus.FAILED
+                )
+            } finally {
+                pendingResult.finish()
+            }
+        }
     }
 
     companion object {
@@ -29,6 +68,7 @@ class RetryMessageReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val localId = intent.getStringExtra(EXTRA_LOCAL_ID) ?: return
+
         val launchIntent = Intent(context, com.hesham0_0.marassel.ui.MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(EXTRA_LOCAL_ID, localId)
