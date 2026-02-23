@@ -24,8 +24,7 @@ class FirebaseAuthRepository @Inject constructor(
             trySend(firebaseAuth.currentUser?.toDomain())
         }
         auth.addAuthStateListener(listener)
-        // Emit current state immediately so first collector
-        // doesn't wait for the next auth change event
+
         trySend(auth.currentUser?.toDomain())
         awaitClose { auth.removeAuthStateListener(listener) }
     }.distinctUntilChanged()

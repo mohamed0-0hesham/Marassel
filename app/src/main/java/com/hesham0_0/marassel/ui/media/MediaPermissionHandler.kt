@@ -43,12 +43,6 @@ fun Context.openAppSettings() {
     )
 }
 
-/**
- * Stable state holder for the media permission flow.
- *
- * Consumed by [rememberMediaPermissionState] and used in composables
- * that need to trigger permission requests and react to results.
- */
 @Stable
 class MediaPermissionState(
     val hasPermission: Boolean,
