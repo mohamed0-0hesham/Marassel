@@ -12,10 +12,7 @@ import javax.inject.Inject
 class GoogleSignInHelper @Inject constructor() {
 
     companion object {
-        // TODO: Replace with your actual Web Client ID from Firebase Console
-        // Firebase Console → Project Settings → General → Your apps → Web app → Web API Key
-        // OR: Firebase Console → Authentication → Sign-in method → Google → Web client ID
-        const val WEB_CLIENT_ID = "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com"
+        const val WEB_CLIENT_ID = "62921054375-5lktptohmu6ska7o3i9hvl3755ssq7h2.apps.googleusercontent.com"
     }
 
     /**

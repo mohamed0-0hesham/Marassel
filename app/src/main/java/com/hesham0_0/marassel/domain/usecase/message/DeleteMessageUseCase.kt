@@ -27,9 +27,9 @@ class DeleteMessageUseCase @Inject constructor(
         // in normal flow — the UI only shows a delete option for own messages.
         if (senderUid != currentUser.uid) {
             return DeleteResult.NotOwner(
-                messageLocalId  = localId,
-                ownerUid        = senderUid,
-                currentUserUid  = currentUser.uid,
+                messageLocalId = localId,
+                ownerUid = senderUid,
+                currentUserUid = currentUser.uid,
             )
         }
 
@@ -41,11 +41,11 @@ class DeleteMessageUseCase @Inject constructor(
         // Step 4 — Hard delete from Firebase + clear local queue
         messageRepository.deleteMessage(
             firebaseKey = firebaseKey,
-            localId     = localId,
-            type        = type
+            localId = localId,
+            type = type
         ).fold(
             onSuccess = { return DeleteResult.Success(localId = localId) },
-            onFailure = { return DeleteResult.StorageError(it)           },
+            onFailure = { return DeleteResult.StorageError(it) },
         )
 
         // Unreachable — fold always returns above

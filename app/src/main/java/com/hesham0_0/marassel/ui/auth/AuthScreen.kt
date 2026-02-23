@@ -60,16 +60,6 @@ import com.hesham0_0.marassel.ui.theme.ChatSizes
 import com.hesham0_0.marassel.ui.theme.spacing
 import kotlinx.coroutines.launch
 
-/**
- * Authentication screen handling Sign In, Sign Up, and Forgot Password flows.
- *
- * Navigation is driven purely by [AuthUiEffect]s — this screen never
- * calls navController directly.
- *
- * Google Sign-In requires an Activity context for Credential Manager,
- * so the helper is invoked here in the UI layer and the resulting
- * ID token is passed back to the ViewModel.
- */
 @Composable
 fun AuthScreen(
     onNavigateToUsername: (suggestedName: String) -> Unit,
@@ -82,7 +72,6 @@ fun AuthScreen(
     val context = LocalContext.current
     val googleHelper = remember { GoogleSignInHelper() }
 
-    // ── Effect handler ────────────────────────────────────────────────────────
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
             when (effect) {

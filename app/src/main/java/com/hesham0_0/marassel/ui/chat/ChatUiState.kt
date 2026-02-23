@@ -65,9 +65,9 @@ data class ChatUiState(
         get() {
             val names = typingUsers.values.toList()
             return when (names.size) {
-                0    -> ""
-                1    -> "${names[0]} is typing…"
-                2    -> "${names[0]} and ${names[1]} are typing…"
+                0 -> ""
+                1 -> "${names[0]} is typing…"
+                2 -> "${names[0]} and ${names[1]} are typing…"
                 else -> "${names.size} people are typing…"
             }
         }
@@ -119,9 +119,9 @@ data class MessageUiModel(
     val uploadProgress: Int? = null,
 ) {
     val isPending: Boolean get() = status == MessageStatus.PENDING
-    val isFailed: Boolean  get() = status == MessageStatus.FAILED
-    val isSent: Boolean    get() = status == MessageStatus.SENT
-    val isMedia: Boolean   get() = type == MessageType.IMAGE || type == MessageType.VIDEO
+    val isFailed: Boolean get() = status == MessageStatus.FAILED
+    val isSent: Boolean get() = status == MessageStatus.SENT
+    val isMedia: Boolean get() = type == MessageType.IMAGE || type == MessageType.VIDEO
 }
 
 // ── Events ────────────────────────────────────────────────────────────────────
@@ -129,45 +129,52 @@ data class MessageUiModel(
 sealed interface ChatUiEvent : UiEvent {
 
     // Input bar
-    data class MessageInputChanged(val text: String)        : ChatUiEvent
-    data object SendTextClicked                             : ChatUiEvent
-    data class SendMediaClicked(val uris: List<Uri>)        : ChatUiEvent
-    data object AttachmentClicked                           : ChatUiEvent
-    data object MediaPickerDismissed                        : ChatUiEvent
-    data class MediaSelected(val uris: List<Uri>)           : ChatUiEvent
-    data class RemoveSelectedMedia(val uri: Uri)            : ChatUiEvent
-    data object ClearSelectedMedia                          : ChatUiEvent
+    data class MessageInputChanged(val text: String) : ChatUiEvent
+    data object SendTextClicked : ChatUiEvent
+    data class SendMediaClicked(val uris: List<Uri>) : ChatUiEvent
+    data object AttachmentClicked : ChatUiEvent
+    data object MediaPickerDismissed : ChatUiEvent
+    data class MediaSelected(val uris: List<Uri>) : ChatUiEvent
+    data class RemoveSelectedMedia(val uri: Uri) : ChatUiEvent
+    data object ClearSelectedMedia : ChatUiEvent
 
     // Message actions
-    data class RetryMessageClicked(val localId: String)     : ChatUiEvent
+    data class RetryMessageClicked(val localId: String) : ChatUiEvent
     data class DeleteMessageClicked(
         val localId: String,
         val firebaseKey: String?,
         val senderUid: String,
         val type: MessageType
-    )                                                       : ChatUiEvent
-    data class MessageLongPressed(val localId: String)      : ChatUiEvent
-    data object DismissMessageContextMenu                   : ChatUiEvent
+    ) : ChatUiEvent
+
+    data class MessageLongPressed(val localId: String) : ChatUiEvent
+    data object DismissMessageContextMenu : ChatUiEvent
 
     // Pagination
-    data object LoadOlderMessages                           : ChatUiEvent
+    data object LoadOlderMessages : ChatUiEvent
 
     // Initial Load
-    data object InitialScrollCompleted                      : ChatUiEvent
+    data object InitialScrollCompleted : ChatUiEvent
 
     // Misc
-    data object DismissError                                : ChatUiEvent
+    data object DismissError : ChatUiEvent
+
+    data object LogoutClicked : ChatUiEvent
+    data object NavigateToAuth : ChatUiEffect
 }
 
 // ── Effects ───────────────────────────────────────────────────────────────────
 
 sealed interface ChatUiEffect : UiEffect {
     /** Scroll the list to the bottom (newest message) */
-    data object ScrollToBottom                              : ChatUiEffect
+    data object ScrollToBottom : ChatUiEffect
+
     /** Navigate to full-screen media viewer */
-    data class NavigateToMediaViewer(val mediaUrl: String)  : ChatUiEffect
+    data class NavigateToMediaViewer(val mediaUrl: String) : ChatUiEffect
+
     /** Show a transient snackbar */
-    data class ShowSnackbar(val message: String)            : ChatUiEffect
+    data class ShowSnackbar(val message: String) : ChatUiEffect
+
     /** Open the media picker */
-    data object OpenMediaPicker                             : ChatUiEffect
+    data object OpenMediaPicker : ChatUiEffect
 }

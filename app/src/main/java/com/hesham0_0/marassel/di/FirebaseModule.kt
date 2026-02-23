@@ -13,13 +13,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/**
- * Provides Firebase service singletons.
- *
- * FirebaseAuth is the source of truth for user identity.
- * FirebaseDatabase handles realtime chat messages.
- * FirebaseStorage handles media uploads.
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object FirebaseModule {

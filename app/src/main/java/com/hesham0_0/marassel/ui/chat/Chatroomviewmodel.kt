@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.hesham0_0.marassel.core.mvi.BaseViewModel
 import com.hesham0_0.marassel.domain.model.MessageType
 import com.hesham0_0.marassel.domain.model.UserEntity
+import com.hesham0_0.marassel.domain.repository.AuthRepository
 import com.hesham0_0.marassel.domain.usecase.message.DeleteMessageUseCase
 import com.hesham0_0.marassel.domain.usecase.message.DeleteResult
 import com.hesham0_0.marassel.domain.usecase.message.LoadOlderMessagesUseCase
@@ -47,6 +48,7 @@ class ChatRoomViewModel @Inject constructor(
     private val setTypingStatusUseCase: SetTypingStatusUseCase,
     private val orchestrator: MessageSendOrchestrator,
     private val workInfoBridge: WorkInfoMessageBridge,
+    private val authRepository: AuthRepository,
     @ApplicationContext private val context: Context,
 ) : BaseViewModel<ChatUiState, ChatUiEvent, ChatUiEffect>(ChatUiState()) {
 
@@ -167,6 +169,17 @@ class ChatRoomViewModel @Inject constructor(
 
             // Misc
             ChatUiEvent.DismissError -> setState { copy(error = null) }
+
+            ChatUiEvent.LogoutClicked -> onLogout()
+        }
+    }
+
+    private fun onLogout() {
+        viewModelScope.launch {
+            authRepository.signOut()
+            setEffect(
+                ChatUiEvent.NavigateToAuth
+            )
         }
     }
     

@@ -102,6 +102,9 @@ fun ChatNavGraph(
                 onNavigateToMediaViewer = { url ->
                     navController.navigateToMediaViewer(url)
                 },
+                onNavigateToAuth = {
+                    navController.navigateToAuth()
+                }
             )
         }
 

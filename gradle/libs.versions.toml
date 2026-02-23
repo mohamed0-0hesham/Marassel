@@ -50,6 +50,9 @@ coroutinesTest = "1.10.1"
 
 accompanist = "0.36.0"
 googleid = "1.2.0"
+junitKtx = "1.3.0"
+workTesting = "2.11.1"
+uiTestJunit4 = "1.10.3"
 
 [libraries]
 # ── Compose ──────────────────────────────────────────────────────────────────
@@ -120,6 +123,9 @@ turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 mockk-android = { group = "io.mockk", name = "mockk-android", version.ref = "mockk" }
 google-googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
+junit-ktx = { group = "androidx.test.ext", name = "junit-ktx", version.ref = "junitKtx" }
+androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "workTesting" }
+androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4", version.ref = "uiTestJunit4" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

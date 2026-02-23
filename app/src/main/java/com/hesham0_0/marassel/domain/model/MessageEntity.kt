@@ -20,7 +20,7 @@ data class MessageEntity(
 
     val previewText: String
         get() = when (type) {
-            MessageType.TEXT  -> text ?: ""
+            MessageType.TEXT -> text ?: ""
             MessageType.IMAGE -> "📷 Image"
             MessageType.VIDEO -> "🎥 Video"
         }
@@ -45,16 +45,16 @@ data class MessageEntity(
             text: String,
             timestamp: Long = System.currentTimeMillis(),
         ): MessageEntity = MessageEntity(
-            localId     = UUID.randomUUID().toString(),
+            localId = UUID.randomUUID().toString(),
             firebaseKey = null,
-            senderUid   = senderUid,
-            senderName  = senderName,
-            text        = text.trim(),
-            mediaUrl    = null,
-            mediaType   = null,
-            timestamp   = timestamp,
-            status      = MessageStatus.PENDING,
-            type        = MessageType.TEXT,
+            senderUid = senderUid,
+            senderName = senderName,
+            text = text.trim(),
+            mediaUrl = null,
+            mediaType = null,
+            timestamp = timestamp,
+            status = MessageStatus.PENDING,
+            type = MessageType.TEXT,
         )
 
         fun createMediaMessage(
@@ -66,19 +66,19 @@ data class MessageEntity(
             val type = when {
                 mediaType.startsWith("image") -> MessageType.IMAGE
                 mediaType.startsWith("video") -> MessageType.VIDEO
-                else                          -> MessageType.IMAGE // fallback
+                else -> MessageType.IMAGE // fallback
             }
             return MessageEntity(
-                localId     = UUID.randomUUID().toString(),
+                localId = UUID.randomUUID().toString(),
                 firebaseKey = null,
-                senderUid   = senderUid,
-                senderName  = senderName,
-                text        = null,
-                mediaUrl    = null, // populated after upload completes
-                mediaType   = mediaType,
-                timestamp   = timestamp,
-                status      = MessageStatus.PENDING,
-                type        = type,
+                senderUid = senderUid,
+                senderName = senderName,
+                text = null,
+                mediaUrl = null, // populated after upload completes
+                mediaType = mediaType,
+                timestamp = timestamp,
+                status = MessageStatus.PENDING,
+                type = type,
             )
         }
 
@@ -95,17 +95,17 @@ data class MessageEntity(
         ): MessageEntity = MessageEntity(
             // Use firebaseKey as localId for received messages —
             // we don't have the original sender's localId
-            localId     = firebaseKey,
+            localId = firebaseKey,
             firebaseKey = firebaseKey,
-            senderUid   = senderUid,
-            senderName  = senderName,
-            text        = text,
-            mediaUrl    = mediaUrl,
-            mediaType   = mediaType,
-            timestamp   = timestamp,
-            status      = MessageStatus.SENT,
-            type        = type,
-            replyToId   = replyToId,
+            senderUid = senderUid,
+            senderName = senderName,
+            text = text,
+            mediaUrl = mediaUrl,
+            mediaType = mediaType,
+            timestamp = timestamp,
+            status = MessageStatus.SENT,
+            type = type,
+            replyToId = replyToId,
         )
     }
 }
