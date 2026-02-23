@@ -61,6 +61,7 @@ data class MessageEntity(
             senderUid: String,
             senderName: String,
             mediaType: String,
+            localMediaUri: String? = null,
             timestamp: Long = System.currentTimeMillis(),
         ): MessageEntity {
             val type = when {
@@ -74,39 +75,13 @@ data class MessageEntity(
                 senderUid = senderUid,
                 senderName = senderName,
                 text = null,
-                mediaUrl = null, // populated after upload completes
+                mediaUrl = localMediaUri,
                 mediaType = mediaType,
                 timestamp = timestamp,
                 status = MessageStatus.PENDING,
                 type = type,
             )
         }
-
-        fun fromFirebase(
-            firebaseKey: String,
-            senderUid: String,
-            senderName: String,
-            text: String?,
-            mediaUrl: String?,
-            mediaType: String?,
-            timestamp: Long,
-            type: MessageType,
-            replyToId: String? = null,
-        ): MessageEntity = MessageEntity(
-            // Use firebaseKey as localId for received messages —
-            // we don't have the original sender's localId
-            localId = firebaseKey,
-            firebaseKey = firebaseKey,
-            senderUid = senderUid,
-            senderName = senderName,
-            text = text,
-            mediaUrl = mediaUrl,
-            mediaType = mediaType,
-            timestamp = timestamp,
-            status = MessageStatus.SENT,
-            type = type,
-            replyToId = replyToId,
-        )
     }
 }
 

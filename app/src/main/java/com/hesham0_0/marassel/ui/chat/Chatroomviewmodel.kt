@@ -36,6 +36,10 @@ import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import androidx.core.net.toUri
+import android.webkit.MimeTypeMap
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class ChatRoomViewModel @Inject constructor(
@@ -56,7 +60,7 @@ class ChatRoomViewModel @Inject constructor(
     private val activeWorkJobs = mutableMapOf<String, Job>()
     private val uploadProgressMap = mutableMapOf<String, Int?>()
     private var oldestTimestamp: Long = Long.MAX_VALUE
-    
+
     private var typingJob: Job? = null
 
     init {
@@ -240,25 +244,35 @@ class ChatRoomViewModel @Inject constructor(
 
         launch {
             uris.forEach { uri ->
-                val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-                var size = 0L
-                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                    val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-                    if (sizeIndex != -1 && cursor.moveToFirst()) {
-                        size = cursor.getLong(sizeIndex)
-                    }
-                }
+                val (cachedUri, size, mimeType) = withContext(Dispatchers.IO) {
+                    val resolvedMimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
 
-                if (size == 0L) size = 1L
+                    val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(resolvedMimeType) ?: "tmp"
+                    val cachedFile = File(context.cacheDir, "upload_${UUID.randomUUID()}.$extension")
+
+                    try {
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            cachedFile.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+
+                    val finalSize = if (cachedFile.exists() && cachedFile.length() > 0) cachedFile.length() else 1L
+                    Triple(Uri.fromFile(cachedFile), finalSize, resolvedMimeType)
+                }
 
                 when (val result = sendMessageUseCase.sendMedia(
                     mimeType = mimeType,
                     fileSizeBytes = size,
+                    localMediaUri = cachedUri.toString()
                 )) {
                     is SendMessageResult.Success -> {
                         val (uploadRequest, sendRequest) = orchestrator.enqueueMediaMessage(
                             message = result.message,
-                            mediaUri = uri,
+                            mediaUri = cachedUri,
                             mimeType = mimeType,
                         )
                         observeUploadProgress(
