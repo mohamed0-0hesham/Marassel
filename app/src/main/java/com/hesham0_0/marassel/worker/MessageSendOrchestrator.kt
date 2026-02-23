@@ -69,10 +69,10 @@ class MessageSendOrchestrator @Inject constructor(
         message: MessageEntity,
         mediaUri: Uri? = null,
         mimeType: String? = null,
-    ) {
-        val uploadAlreadySucceeded = !message.mediaUrl.isNullOrBlank()
+    ): List<OneTimeWorkRequest> {
+        val uploadAlreadySucceeded = !message.mediaUrl.isNullOrBlank() && message.mediaUrl!!.startsWith("http")
 
-        when {
+        return when {
             // Text message or upload already done — only need to resend
             !message.isMedia || uploadAlreadySucceeded -> {
                 val sendRequest = buildSendRequest(message)
@@ -81,11 +81,13 @@ class MessageSendOrchestrator @Inject constructor(
                     ExistingWorkPolicy.REPLACE,
                     sendRequest,
                 )
+                listOf(sendRequest)
             }
 
             // Media message with failed upload — re-run full chain
             mediaUri != null && mimeType != null -> {
-                enqueueMediaMessage(message, mediaUri, mimeType)
+                val (uploadRequest, sendRequest) = enqueueMediaMessage(message, mediaUri, mimeType)
+                listOf(uploadRequest, sendRequest)
             }
 
             // Media message but no URI available — can only re-enqueue send
@@ -97,6 +99,7 @@ class MessageSendOrchestrator @Inject constructor(
                     ExistingWorkPolicy.REPLACE,
                     sendRequest,
                 )
+                listOf(sendRequest)
             }
         }
     }
@@ -112,7 +115,7 @@ class MessageSendOrchestrator @Inject constructor(
             )
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .addTag(WorkerKeys.TAG_SEND_MESSAGE)
-            .addTag(message.localId)   // tag with localId for easy querying
+            .addTag(message.localId)
             .build()
 
     private fun buildUploadRequest(

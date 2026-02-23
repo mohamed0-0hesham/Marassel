@@ -1,4 +1,4 @@
-package com.chatapp.di
+package com.hesham0_0.marassel.di
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth

@@ -31,6 +31,7 @@ class SendMessageUseCase @Inject constructor(
     suspend fun sendMedia(
         mimeType: String,
         fileSizeBytes: Long,
+        localMediaUri: String,
     ): SendMessageResult {
         val validation = MessageValidator.validateMedia(mimeType, fileSizeBytes)
         if (!validation.isValid) {
@@ -42,6 +43,7 @@ class SendMessageUseCase @Inject constructor(
                 senderUid  = uid,
                 senderName = displayName,
                 mediaType  = mimeType,
+                localMediaUri = localMediaUri
             )
         }
     }

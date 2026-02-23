@@ -1,8 +1,11 @@
 package com.hesham0_0.marassel.worker
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -15,7 +18,6 @@ import com.hesham0_0.marassel.worker.WorkDataUtils.toMessageEntity
 import com.hesham0_0.marassel.worker.WorkDataUtils.toSendMessageParams
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-
 
 @HiltWorker
 class SendMessageWorker @AssistedInject constructor(
@@ -34,11 +36,6 @@ class SendMessageWorker @AssistedInject constructor(
         val localId = sendParams.localId
 
         // Step 2 — Merge any media URLs from UploadMediaWorker output.
-        //
-        // When this worker is chained after UploadMediaWorker, WorkManager
-        // merges the upload worker's output Data into this worker's inputData.
-        // The KEY_MEDIA_URLS from the upload output overwrites whatever was
-        // originally set at enqueue time — which is correct behavior.
         val mergedMediaUrls = inputData.extractMediaUrls()
         val effectiveParams = if (mergedMediaUrls.isNotEmpty()) {
             sendParams.copy(mediaUrls = mergedMediaUrls)
@@ -84,7 +81,7 @@ class SendMessageWorker @AssistedInject constructor(
     override suspend fun getForegroundInfo(): ForegroundInfo {
         val localId = inputData.getString(WorkerKeys.KEY_LOCAL_ID) ?: "unknown"
         val notification = NotificationHelper.buildUploadIndeterminateNotification(appContext, localId)
-        
+
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ForegroundInfo(
                 WorkerKeys.NOTIFICATION_ID_UPLOAD,
@@ -106,25 +103,29 @@ class SendMessageWorker @AssistedInject constructor(
         previewText: String,
     ): Result {
         return if (runAttemptCount < MAX_ATTEMPTS - 1) {
-            // Still have retries left — WorkManager will reschedule with
-            // exponential backoff (configured at enqueue site, CHAT-035)
             Result.retry()
         } else {
-            // All retries exhausted — give up and notify the user
             messageRepository.updateMessageStatus(
                 localId = localId,
                 status = MessageStatus.FAILED,
             )
 
             val notificationId = WorkerKeys.NOTIFICATION_ID_FAILED + localId.hashCode()
-            androidx.core.app.NotificationManagerCompat.from(appContext).notify(
-                notificationId,
-                NotificationHelper.buildFailedMessageNotification(
-                    context = appContext,
-                    localId = localId,
-                    previewText = previewText,
-                ),
-            )
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(appContext, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            ) {
+                androidx.core.app.NotificationManagerCompat.from(appContext).notify(
+                    notificationId,
+                    NotificationHelper.buildFailedMessageNotification(
+                        context = appContext,
+                        localId = localId,
+                        previewText = previewText,
+                    ),
+                )
+            }
+
+            NotificationHelper.showFailedMessageSummary(appContext, 1)
 
             Result.failure(
                 workDataOf("error" to (cause.message ?: "Send failed after $MAX_ATTEMPTS attempts"))

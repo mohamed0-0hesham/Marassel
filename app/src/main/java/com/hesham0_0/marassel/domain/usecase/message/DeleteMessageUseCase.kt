@@ -17,14 +17,9 @@ class DeleteMessageUseCase @Inject constructor(
         type: MessageType,
     ): DeleteResult {
 
-        // Step 1 — Resolve current user
         val currentUser = authRepository.getCurrentUser()
             ?: return DeleteResult.NotAuthenticated
 
-        // Step 2 — Ownership check using caller-supplied senderUid
-        // We trust the caller's senderUid (it comes from the MessageUiItem
-        // that was rendered on screen). A mismatch should not be possible
-        // in normal flow — the UI only shows a delete option for own messages.
         if (senderUid != currentUser.uid) {
             return DeleteResult.NotOwner(
                 messageLocalId = localId,
@@ -33,12 +28,10 @@ class DeleteMessageUseCase @Inject constructor(
             )
         }
 
-        // Step 3 — Handle unconfirmed messages (never reached Firebase)
         if (firebaseKey == null) {
             return DeleteResult.UnconfirmedMessage(localId = localId)
         }
 
-        // Step 4 — Hard delete from Firebase + clear local queue
         messageRepository.deleteMessage(
             firebaseKey = firebaseKey,
             localId = localId,
@@ -48,7 +41,6 @@ class DeleteMessageUseCase @Inject constructor(
             onFailure = { return DeleteResult.StorageError(it) },
         )
 
-        // Unreachable — fold always returns above
         @Suppress("UNREACHABLE_CODE")
         return DeleteResult.StorageError(IllegalStateException("Unreachable"))
     }

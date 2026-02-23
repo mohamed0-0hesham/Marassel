@@ -15,10 +15,6 @@ object MessageDtoMapper {
         }
 
         return MessageEntity(
-            // Use the sender's localId if present so the sender can
-            // deduplicate against their local PENDING message.
-            // Fall back to firebaseKey for messages from other senders
-            // (they won't have a matching local message anyway).
             localId     = dto.localId?.takeIf { it.isNotBlank() } ?: firebaseKey,
             firebaseKey = firebaseKey,
             senderUid   = dto.senderUid?.takeIf { it.isNotBlank() } ?: UNKNOWN_UID,
@@ -45,7 +41,7 @@ object MessageDtoMapper {
         mediaUrl   = entity.mediaUrl,
         mediaType  = entity.mediaType,
         timestamp  = entity.timestamp,
-        type       = entity.type.name,       // "TEXT", "IMAGE", or "VIDEO"
+        type       = entity.type.name,
         localId    = entity.localId,
         replyToId  = entity.replyToId,
     )

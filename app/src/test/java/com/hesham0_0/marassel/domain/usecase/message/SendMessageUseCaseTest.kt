@@ -181,7 +181,7 @@ class SendMessageUseCaseTest {
 
     @Test
     fun `sendMedia returns Success for valid image jpeg`() = runTest {
-        val result = useCase.sendMedia("image/jpeg", 1024L)
+        val result = useCase.sendMedia("image/jpeg", 1024L, "file://fake_cache_path.jpg")
         assertTrue(result is SendMessageResult.Success)
         val msg = (result as SendMessageResult.Success).message
         assertEquals(MessageType.IMAGE, msg.type)
@@ -190,14 +190,14 @@ class SendMessageUseCaseTest {
 
     @Test
     fun `sendMedia returns Success for valid video mp4`() = runTest {
-        val result = useCase.sendMedia("video/mp4", 2048L)
+        val result = useCase.sendMedia("video/mp4", 2048L, "file://fake_cache_path.mp4")
         assertTrue(result is SendMessageResult.Success)
         assertEquals(MessageType.VIDEO, (result as SendMessageResult.Success).message.type)
     }
 
     @Test
     fun `sendMedia returns ValidationFailed for empty file`() = runTest {
-        val result = useCase.sendMedia("image/jpeg", 0L)
+        val result = useCase.sendMedia("image/jpeg", 0L, "file://fake_cache_path.jpg")
         assertTrue(result is SendMessageResult.ValidationFailed)
         val vf = result as SendMessageResult.ValidationFailed
         assertTrue(vf.reason is MessageValidator.ValidationResult.EmptyMediaFile)
@@ -205,7 +205,11 @@ class SendMessageUseCaseTest {
 
     @Test
     fun `sendMedia returns ValidationFailed for file over size limit`() = runTest {
-        val result = useCase.sendMedia("image/jpeg", MessageValidator.MAX_MEDIA_BYTES + 1)
+        val result = useCase.sendMedia(
+            "image/jpeg",
+            MessageValidator.MAX_MEDIA_BYTES + 1,
+            "file://fake_cache_path.jpg"
+        )
         assertTrue(result is SendMessageResult.ValidationFailed)
         val vf = result as SendMessageResult.ValidationFailed
         assertTrue(vf.reason is MessageValidator.ValidationResult.MediaTooLarge)
@@ -213,7 +217,7 @@ class SendMessageUseCaseTest {
 
     @Test
     fun `sendMedia returns ValidationFailed for unsupported MIME type`() = runTest {
-        val result = useCase.sendMedia("application/pdf", 1024L)
+        val result = useCase.sendMedia("application/pdf", 1024L, "file://fake_cache_path.mp4")
         assertTrue(result is SendMessageResult.ValidationFailed)
         val vf = result as SendMessageResult.ValidationFailed
         assertTrue(vf.reason is MessageValidator.ValidationResult.UnsupportedMediaType)
@@ -222,13 +226,17 @@ class SendMessageUseCaseTest {
     @Test
     fun `sendMedia returns NotAuthenticated when auth user is null`() = runTest {
         coEvery { authRepository.getCurrentUser() } returns null
-        val result = useCase.sendMedia("image/jpeg", 1024L)
+        val result = useCase.sendMedia("image/jpeg", 1024L, "file://fake_cache_path.jpg")
         assertTrue(result is SendMessageResult.NotAuthenticated)
     }
 
     @Test
     fun `sendMedia entity has null mediaUrl immediately (populated after upload)`() = runTest {
-        val result = useCase.sendMedia("image/jpeg", 1024L) as SendMessageResult.Success
+        val result = useCase.sendMedia(
+            "image/jpeg",
+            1024L,
+            "file://fake_cache_path.jpg"
+        ) as SendMessageResult.Success
         assertTrue(result.message.mediaUrl == null)
     }
 
@@ -239,7 +247,7 @@ class SendMessageUseCaseTest {
             Unit
         )
 
-        useCase.sendMedia("image/png", 2048L)
+        useCase.sendMedia("image/png", 2048L, "file://fake_cache_path.png")
 
         assertEquals("image/png", capturedMsg.captured.mediaType)
     }

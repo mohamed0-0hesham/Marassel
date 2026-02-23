@@ -52,7 +52,6 @@ class FirebaseStorageDataSource @Inject constructor(
         }
 
         uploadTask.addOnSuccessListener {
-            // Resolve the public download URL then close the flow
             storageRef.downloadUrl
                 .addOnSuccessListener { uri ->
                     trySend(UploadState.Success(downloadUrl = uri.toString()))
@@ -76,8 +75,6 @@ class FirebaseStorageDataSource @Inject constructor(
 
         val listResult = listRef.listAll().await()
 
-        // Delete all items under the prefix — individually (Firebase Storage
-        // has no batch delete API)
         val errors = listResult.items.mapNotNull { ref ->
             runCatching { ref.delete().await() }.exceptionOrNull()
         }
