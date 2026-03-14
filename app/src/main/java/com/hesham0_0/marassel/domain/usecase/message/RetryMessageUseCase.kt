@@ -22,15 +22,15 @@ class RetryMessageUseCase @Inject constructor(
         // Step 2 — Guard: only FAILED messages can be retried
         if (message.status != MessageStatus.FAILED) {
             return RetryMessageResult.MessageNotFailed(
-                localId       = localId,
+                localId = localId,
                 currentStatus = message.status,
             )
         }
 
         // Step 3 — Reset to PENDING so UI shows queued indicator
         messageRepository.updateMessageStatus(
-            localId     = localId,
-            status      = MessageStatus.PENDING,
+            localId = localId,
+            status = MessageStatus.PENDING,
             firebaseKey = message.firebaseKey, // preserve any existing key
         ).getOrElse { return RetryMessageResult.StorageError(it) }
 

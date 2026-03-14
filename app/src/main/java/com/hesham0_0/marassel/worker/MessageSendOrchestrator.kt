@@ -47,7 +47,7 @@ class MessageSendOrchestrator @Inject constructor(
         mimeType: String,
     ): Pair<OneTimeWorkRequest, OneTimeWorkRequest> {
         val uploadRequest = buildUploadRequest(
-            localId  = message.localId,
+            localId = message.localId,
             mediaUri = mediaUri,
             mimeType = mimeType,
         )
@@ -70,7 +70,8 @@ class MessageSendOrchestrator @Inject constructor(
         mediaUri: Uri? = null,
         mimeType: String? = null,
     ): List<OneTimeWorkRequest> {
-        val uploadAlreadySucceeded = !message.mediaUrl.isNullOrBlank() && message.mediaUrl!!.startsWith("http")
+        val uploadAlreadySucceeded =
+            !message.mediaUrl.isNullOrBlank() && message.mediaUrl!!.startsWith("http")
 
         return when {
             // Text message or upload already done — only need to resend

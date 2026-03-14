@@ -62,7 +62,7 @@ class WorkInfoMessageBridge @Inject constructor(
         val status = when (state) {
             WorkInfo.State.ENQUEUED,
             WorkInfo.State.BLOCKED,
-            WorkInfo.State.RUNNING  -> MessageStatus.PENDING
+            WorkInfo.State.RUNNING -> MessageStatus.PENDING
 
             WorkInfo.State.SUCCEEDED -> MessageStatus.SENT
 
@@ -77,10 +77,10 @@ class WorkInfoMessageBridge @Inject constructor(
         } else null
 
         return MessageStatusUpdate(
-            localId     = localId,
-            status      = status,
+            localId = localId,
+            status = status,
             firebaseKey = firebaseKey,
-            workState   = state,
+            workState = state,
         )
     }
 }

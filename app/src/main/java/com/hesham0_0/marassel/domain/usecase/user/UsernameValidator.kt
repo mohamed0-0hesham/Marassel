@@ -15,6 +15,7 @@ object UsernameValidator {
         data class TooLong(val currentLength: Int) : ValidationResult()
         data class InvalidCharacters(val invalidChars: Set<Char>) : ValidationResult()
         data object ConsecutiveSpaces : ValidationResult()
+
         val isValid: Boolean get() = this is Valid
     }
 
@@ -50,17 +51,21 @@ object UsernameValidator {
     }
 
     fun toErrorMessage(result: ValidationResult): String? = when (result) {
-        is ValidationResult.Valid            -> null
-        is ValidationResult.Blank           ->
+        is ValidationResult.Valid -> null
+        is ValidationResult.Blank ->
             "Display name cannot be empty"
-        is ValidationResult.TooShort        ->
+
+        is ValidationResult.TooShort ->
             "Display name must be at least $MIN_LENGTH characters " +
                     "(${result.currentLength}/$MIN_LENGTH)"
-        is ValidationResult.TooLong         ->
+
+        is ValidationResult.TooLong ->
             "Display name cannot exceed $MAX_LENGTH characters " +
                     "(${result.currentLength}/$MAX_LENGTH)"
+
         is ValidationResult.ConsecutiveSpaces ->
             "Display name cannot contain consecutive spaces"
+
         is ValidationResult.InvalidCharacters -> {
             val chars = result.invalidChars.joinToString(" ") { "'$it'" }
             "Display name contains invalid characters: $chars"
