@@ -24,7 +24,7 @@ import javax.inject.Singleton
  * [ConnectivityManager] uses a callback-based API. [callbackFlow] bridges
  * the callback world into coroutines by:
  * 1. Registering the callback when the first collector subscribes (cold start)
- * 2. Emitting values via [trySend] inside callbacks
+ * 2. Emitting values via trySend inside callbacks
  * 3. Unregistering the callback via [awaitClose] when all collectors cancel
  *
  * This ensures we never leak a registered [NetworkCallback].
