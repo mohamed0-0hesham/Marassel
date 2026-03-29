@@ -31,7 +31,9 @@ object MessageDtoMapper {
 
     fun toEntityList(pairs: List<Pair<String, MessageDto>>): List<MessageEntity> =
         pairs.mapNotNull { (key, dto) ->
-            runCatching { toEntity(dto, key) }.getOrNull()
+            runCatching { toEntity(dto, key) }
+                .getOrNull()
+                ?.takeIf { isValid(it) }
         }
 
     fun toDto(entity: MessageEntity): MessageDto = MessageDto(
@@ -45,4 +47,8 @@ object MessageDtoMapper {
         localId = entity.localId,
         replyToId = entity.replyToId,
     )
+
+    private fun isValid(entity: MessageEntity): Boolean {
+        return entity.senderUid != UNKNOWN_UID && entity.timestamp > 0L
+    }
 }
