@@ -7,7 +7,6 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.hesham0_0.marassel.data.remote.FirebaseMessageDataSource
 import com.hesham0_0.marassel.data.remote.FirebaseStorageDataSource
-import com.hesham0_0.marassel.di.MessageQueueStore
 import com.hesham0_0.marassel.domain.model.MessageEntity
 import com.hesham0_0.marassel.domain.model.MessageStatus
 import com.hesham0_0.marassel.domain.model.MessageType
@@ -29,7 +28,7 @@ import javax.inject.Singleton
 class MessageRepositoryImpl @Inject constructor(
     private val firebaseDataSource: FirebaseMessageDataSource,
     private val firebaseStorageDataSource: FirebaseStorageDataSource,
-    @MessageQueueStore private val dataStore: DataStore<Preferences>,
+    private val dataStore: DataStore<Preferences>,
 ) : MessageRepository {
 
     companion object {

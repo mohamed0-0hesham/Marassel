@@ -5,7 +5,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.hesham0_0.marassel.di.UserProfileStore
 import com.hesham0_0.marassel.domain.model.UserEntity
 import com.hesham0_0.marassel.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
@@ -18,7 +17,7 @@ import javax.inject.Singleton
 
 @Singleton
 class UserRepositoryImpl @Inject constructor(
-    @UserProfileStore private val dataStore: DataStore<Preferences>,
+    private val dataStore: DataStore<Preferences>,
 ) : UserRepository {
 
     private fun usernameKey(uid: String) =
