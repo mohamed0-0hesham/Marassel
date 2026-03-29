@@ -32,6 +32,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import androidx.core.net.toUri
 
@@ -53,7 +54,7 @@ class ChatRoomViewModel @Inject constructor(
 
     private val activeWorkJobs = mutableMapOf<String, Job>()
     private val uploadProgressMap = mutableMapOf<String, Int?>()
-    private var oldestTimestamp: Long = Long.MAX_VALUE
+    private val oldestTimestamp = AtomicLong(Long.MAX_VALUE)
 
     private var typingJob: Job? = null
 
@@ -76,7 +77,7 @@ class ChatRoomViewModel @Inject constructor(
                 val models = items.map { item -> item.toUiModel(user) }
 
                 models.minOfOrNull { it.timestamp }?.let { ts ->
-                    if (ts < oldestTimestamp) oldestTimestamp = ts
+                    oldestTimestamp.updateAndGet { minOf(it, ts) }
                 }
 
                 val oldMessages = currentState.messages
@@ -355,7 +356,7 @@ class ChatRoomViewModel @Inject constructor(
 
         launch {
             when (val result = loadOlderMessagesUseCase(
-                beforeTimestamp = oldestTimestamp,
+                beforeTimestamp = oldestTimestamp.get(),
                 limit = LoadOlderMessagesUseCase.DEFAULT_PAGE_SIZE,
             )) {
                 is com.hesham0_0.marassel.domain.usecase.message.LoadOlderResult.Success -> {
@@ -374,7 +375,7 @@ class ChatRoomViewModel @Inject constructor(
                     }
 
                     models.minOfOrNull { it.timestamp }?.let { ts ->
-                        if (ts < oldestTimestamp) oldestTimestamp = ts
+                        oldestTimestamp.updateAndGet { minOf(it, ts) }
                     }
 
                     setState {
