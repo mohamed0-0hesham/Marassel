@@ -3,6 +3,7 @@ package com.hesham0_0.marassel.ui.chat
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.hesham0_0.marassel.core.mvi.BaseViewModel
 import com.hesham0_0.marassel.domain.model.MessageType
@@ -244,25 +245,35 @@ class ChatRoomViewModel @Inject constructor(
 
         launch {
             uris.forEach { uri ->
-                val (cachedUri, size, mimeType) = withContext(Dispatchers.IO) {
+                val mediaInfo = withContext(Dispatchers.IO) {
                     val resolvedMimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
 
                     val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(resolvedMimeType) ?: "tmp"
                     val cachedFile = File(context.cacheDir, "upload_${UUID.randomUUID()}.$extension")
 
                     try {
-                        context.contentResolver.openInputStream(uri)?.use { input ->
-                            cachedFile.outputStream().use { output ->
-                                input.copyTo(output)
+                        val input = context.contentResolver.openInputStream(uri)
+                            ?: throw IllegalStateException("Could not open input stream for $uri")
+                        input.use { inStream ->
+                            cachedFile.outputStream().use { outStream ->
+                                inStream.copyTo(outStream)
                             }
                         }
+                        
+                        val finalSize = if (cachedFile.exists() && cachedFile.length() > 0) cachedFile.length() else 1L
+                        Triple(Uri.fromFile(cachedFile), finalSize, resolvedMimeType)
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        Log.e("ChatRoomViewModel", "Failed to copy media file to cache", e)
+                        null
                     }
-
-                    val finalSize = if (cachedFile.exists() && cachedFile.length() > 0) cachedFile.length() else 1L
-                    Triple(Uri.fromFile(cachedFile), finalSize, resolvedMimeType)
                 }
+
+                if (mediaInfo == null) {
+                    setEffect(ChatUiEffect.ShowSnackbar("Failed to prepare media file"))
+                    return@forEach
+                }
+
+                val (cachedUri, size, mimeType) = mediaInfo
 
                 when (val result = sendMessageUseCase.sendMedia(
                     mimeType = mimeType,
@@ -480,6 +491,9 @@ class ChatRoomViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         typingJob?.cancel()
+        // Note: We cannot call setTypingStatusUseCase(isTyping = false) here 
+        // because viewModelScope is already cancelled. We rely on Firebase's 
+        // onDisconnect() rules or timeout to clean up the typing status.
         activeWorkJobs.values.forEach { it.cancel() }
         activeWorkJobs.clear()
     }
