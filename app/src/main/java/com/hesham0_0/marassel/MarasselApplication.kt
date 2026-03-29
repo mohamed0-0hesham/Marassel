@@ -3,6 +3,7 @@ package com.hesham0_0.marassel
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.google.firebase.database.FirebaseDatabase
 import com.hesham0_0.marassel.worker.NotificationChannelSetup
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -15,6 +16,7 @@ class MarasselApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        FirebaseDatabase.getInstance().setPersistenceEnabled(true)
         NotificationChannelSetup.createChannels(this)
     }
 
