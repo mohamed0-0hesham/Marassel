@@ -16,8 +16,6 @@ data class MessageEntity(
     val replyToId: String? = null,
 ) {
 
-    fun isSentBy(uid: String): Boolean = senderUid == uid
-
     val previewText: String
         get() = when (type) {
             MessageType.TEXT -> text ?: ""
@@ -27,15 +25,6 @@ data class MessageEntity(
 
     val isMedia: Boolean
         get() = type == MessageType.IMAGE || type == MessageType.VIDEO
-
-    val isPending: Boolean
-        get() = status == MessageStatus.PENDING
-
-    val isFailed: Boolean
-        get() = status == MessageStatus.FAILED
-
-    val isSent: Boolean
-        get() = status == MessageStatus.SENT
 
     companion object {
 
