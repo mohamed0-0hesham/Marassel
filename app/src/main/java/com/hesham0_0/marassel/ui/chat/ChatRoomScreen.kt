@@ -117,7 +117,7 @@ fun ChatRoomScreen(
                 is ChatUiEffect.OpenMediaPicker ->
                     viewModel.onEvent(ChatUiEvent.AttachmentClicked)
 
-                is ChatUiEvent.NavigateToAuth -> onNavigateToAuth()
+                is ChatUiEffect.NavigateToAuth -> onNavigateToAuth()
             }
         }
     }

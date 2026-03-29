@@ -174,7 +174,7 @@ class ChatRoomViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.signOut()
             setEffect(
-                ChatUiEvent.NavigateToAuth
+                ChatUiEffect.NavigateToAuth
             )
         }
     }
