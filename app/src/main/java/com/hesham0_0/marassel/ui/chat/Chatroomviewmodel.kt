@@ -411,6 +411,7 @@ class ChatRoomViewModel @Inject constructor(
 
                 if (update.isTerminal) {
                     activeWorkJobs.remove(localId)?.cancel()
+                    uploadProgressMap.remove(localId)
                 }
             }
             .launchIn(viewModelScope)
