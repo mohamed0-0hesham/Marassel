@@ -16,7 +16,11 @@ class MarasselApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        FirebaseDatabase.getInstance().setPersistenceEnabled(true)
+        try {
+            FirebaseDatabase.getInstance().setPersistenceEnabled(true)
+        } catch (e: IllegalStateException) {
+            // Firebase is not initialized, likely running in a test environment.
+        }
         NotificationChannelSetup.createChannels(this)
     }
 

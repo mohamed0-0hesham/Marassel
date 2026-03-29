@@ -53,7 +53,7 @@ fun NotificationPermissionHandler(
             // If the system dialog was shown and denied, we can't distinguish
             // "denied once" from "permanently denied" without shouldShowRequestPermissionRationale.
             // Since we're in Compose we check via a flag set before launching.
-            isPermanentlyDenied = !isGranted
+            isPermanentlyDenied = true
         }
         onPermissionResult(isGranted)
     }

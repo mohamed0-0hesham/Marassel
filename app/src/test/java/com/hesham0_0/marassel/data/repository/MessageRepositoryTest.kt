@@ -144,8 +144,8 @@ class   MessageRepositoryTest {
         val result = repository.observeMessages().first()
 
         assertEquals(2, result.size)
-        assertTrue(result.any { it.localId == "local-unconfirmed" && it.isPending })
-        assertTrue(result.any { it.localId == "other" && it.isSent })
+        assertTrue(result.any { it.localId == "local-unconfirmed" && it.status == MessageStatus.PENDING })
+        assertTrue(result.any { it.localId == "other" && it.status == MessageStatus.SENT })
     }
 
     @Test
