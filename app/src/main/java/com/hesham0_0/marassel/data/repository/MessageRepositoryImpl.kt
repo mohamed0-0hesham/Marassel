@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.hesham0_0.marassel.data.remote.FirebaseMessageDataSource
 import com.hesham0_0.marassel.data.remote.FirebaseStorageDataSource
+import com.hesham0_0.marassel.di.MessageQueueStore
 import com.hesham0_0.marassel.domain.model.MessageEntity
 import com.hesham0_0.marassel.domain.model.MessageStatus
 import com.hesham0_0.marassel.domain.model.MessageType
@@ -17,7 +18,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -29,7 +29,7 @@ import javax.inject.Singleton
 class MessageRepositoryImpl @Inject constructor(
     private val firebaseDataSource: FirebaseMessageDataSource,
     private val firebaseStorageDataSource: FirebaseStorageDataSource,
-    private val dataStore: DataStore<Preferences>,
+    @MessageQueueStore private val dataStore: DataStore<Preferences>,
 ) : MessageRepository {
 
     companion object {
@@ -98,8 +98,8 @@ class MessageRepositoryImpl @Inject constructor(
     override suspend fun saveMessageLocally(message: MessageEntity): Result<Unit> =
         runCatching {
             val json = Json.encodeToString(message.toSerializable())
-            dataStore.edit { prefs -> prefs[pendingKey(message.localId)] = json }
-            Unit
+            dataStore.edit { prefs -> prefs[pendingKey(message.localId)] = json
+            }
         }
 
     override suspend fun updateMessageStatus(
@@ -118,7 +118,6 @@ class MessageRepositoryImpl @Inject constructor(
             )
             prefs[key] = Json.encodeToString(updated.toSerializable())
         }
-        Unit
     }
 
     override suspend fun getPendingMessages(): Result<List<MessageEntity>> =
@@ -134,7 +133,6 @@ class MessageRepositoryImpl @Inject constructor(
     override suspend fun clearPendingMessage(localId: String): Result<Unit> =
         runCatching {
             dataStore.edit { prefs -> prefs.remove(pendingKey(localId)) }
-            Unit
         }
 
     override suspend fun getLocalMessages(): Result<List<MessageEntity>> =

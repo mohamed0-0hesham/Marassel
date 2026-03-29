@@ -13,10 +13,22 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Qualifier
 import javax.inject.Singleton
 
-private val Context.userDataStore: DataStore<Preferences>
-        by preferencesDataStore(name = "user_preferences")
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class UserProfileStore
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class MessageQueueStore
+
+private val Context.userProfileStore: DataStore<Preferences>
+        by preferencesDataStore(name = "user_profiles")
+
+private val Context.messageQueueStore: DataStore<Preferences>
+        by preferencesDataStore(name = "message_queue")
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -24,9 +36,17 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideUserDataStore(
+    @UserProfileStore
+    fun provideUserProfileStore(
         @ApplicationContext context: Context,
-    ): DataStore<Preferences> = context.userDataStore
+    ): DataStore<Preferences> = context.userProfileStore
+
+    @Provides
+    @Singleton
+    @MessageQueueStore
+    fun provideMessageQueueStore(
+        @ApplicationContext context: Context,
+    ): DataStore<Preferences> = context.messageQueueStore
 
     @Provides
     fun provideUsernameValidator(): UsernameValidator = UsernameValidator

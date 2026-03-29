@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.hesham0_0.marassel.di.UserProfileStore
 import com.hesham0_0.marassel.domain.model.UserEntity
 import com.hesham0_0.marassel.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
@@ -17,7 +18,7 @@ import javax.inject.Singleton
 
 @Singleton
 class UserRepositoryImpl @Inject constructor(
-    private val dataStore: DataStore<Preferences>,
+    @UserProfileStore private val dataStore: DataStore<Preferences>,
 ) : UserRepository {
 
     private fun usernameKey(uid: String) =
@@ -45,7 +46,6 @@ class UserRepositoryImpl @Inject constructor(
                 user.email?.let    { prefs[emailKey(user.uid)]    = it }
                 user.photoUrl?.let { prefs[photoUrlKey(user.uid)] = it }
             }
-            Unit
         }
 
     override suspend fun getProfile(uid: String): Result<UserEntity?> =
@@ -70,7 +70,6 @@ class UserRepositoryImpl @Inject constructor(
                 prefs.remove(emailKey(uid))
                 prefs.remove(photoUrlKey(uid))
             }
-            Unit
         }
 
     // ── Private helper ────────────────────────────────────────────────────────
