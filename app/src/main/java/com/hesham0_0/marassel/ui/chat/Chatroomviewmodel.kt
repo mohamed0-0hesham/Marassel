@@ -1,11 +1,9 @@
 package com.hesham0_0.marassel.ui.chat
 
-import android.content.Context
 import android.net.Uri
-import android.provider.OpenableColumns
-import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.hesham0_0.marassel.core.mvi.BaseViewModel
+import com.hesham0_0.marassel.data.repository.MediaFileCache
 import com.hesham0_0.marassel.domain.model.MessageType
 import com.hesham0_0.marassel.domain.model.UserEntity
 import com.hesham0_0.marassel.domain.repository.AuthRepository
@@ -25,7 +23,6 @@ import com.hesham0_0.marassel.worker.MessageSendOrchestrator
 import com.hesham0_0.marassel.worker.MessageStatusUpdate
 import com.hesham0_0.marassel.worker.WorkInfoMessageBridge
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
@@ -37,10 +34,6 @@ import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import androidx.core.net.toUri
-import android.webkit.MimeTypeMap
-import java.io.File
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class ChatRoomViewModel @Inject constructor(
@@ -55,7 +48,7 @@ class ChatRoomViewModel @Inject constructor(
     private val orchestrator: MessageSendOrchestrator,
     private val workInfoBridge: WorkInfoMessageBridge,
     private val authRepository: AuthRepository,
-    @ApplicationContext private val context: Context,
+    private val mediaFileCache: MediaFileCache,
 ) : BaseViewModel<ChatUiState, ChatUiEvent, ChatUiEffect>(ChatUiState()) {
 
     private val activeWorkJobs = mutableMapOf<String, Job>()
@@ -245,28 +238,7 @@ class ChatRoomViewModel @Inject constructor(
 
         launch {
             uris.forEach { uri ->
-                val mediaInfo = withContext(Dispatchers.IO) {
-                    val resolvedMimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-
-                    val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(resolvedMimeType) ?: "tmp"
-                    val cachedFile = File(context.cacheDir, "upload_${UUID.randomUUID()}.$extension")
-
-                    try {
-                        val input = context.contentResolver.openInputStream(uri)
-                            ?: throw IllegalStateException("Could not open input stream for $uri")
-                        input.use { inStream ->
-                            cachedFile.outputStream().use { outStream ->
-                                inStream.copyTo(outStream)
-                            }
-                        }
-                        
-                        val finalSize = if (cachedFile.exists() && cachedFile.length() > 0) cachedFile.length() else 1L
-                        Triple(Uri.fromFile(cachedFile), finalSize, resolvedMimeType)
-                    } catch (e: Exception) {
-                        Log.e("ChatRoomViewModel", "Failed to copy media file to cache", e)
-                        null
-                    }
-                }
+                val mediaInfo = mediaFileCache.cacheMediaFile(uri)
 
                 if (mediaInfo == null) {
                     setEffect(ChatUiEffect.ShowSnackbar("Failed to prepare media file"))
@@ -347,7 +319,12 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
-    private fun onDeleteMessage(localId: String, firebaseKey: String?, senderUid: String, type: MessageType) {
+    private fun onDeleteMessage(
+        localId: String,
+        firebaseKey: String?,
+        senderUid: String,
+        type: MessageType
+    ) {
         setState { copy(selectedMessageLocalId = null) }
         launch {
             val result = deleteMessageUseCase(
@@ -470,7 +447,10 @@ class ChatRoomViewModel @Inject constructor(
 
             val showTimestamp = prev == null || !isSameDay(prev.timestamp, model.timestamp)
             val showSenderInfo = prev == null || prev.senderUid != model.senderUid || showTimestamp
-            val isLastInBurst = next == null || next.senderUid != model.senderUid || !isSameDay(model.timestamp, next.timestamp)
+            val isLastInBurst = next == null || next.senderUid != model.senderUid || !isSameDay(
+                model.timestamp,
+                next.timestamp
+            )
 
             model.copy(
                 showSenderInfo = !model.isFromCurrentUser && showSenderInfo,
