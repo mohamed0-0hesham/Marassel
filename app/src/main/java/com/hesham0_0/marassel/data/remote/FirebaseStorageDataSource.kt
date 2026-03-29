@@ -3,7 +3,6 @@ package com.hesham0_0.marassel.data.remote
 import android.net.Uri
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storageMetadata
-import com.hesham0_0.marassel.data.remote.FirebaseStorageDataSource.Companion.MAX_FILENAME_LENGTH
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -134,8 +133,4 @@ sealed class UploadState {
     data class Error(val cause: Throwable) : UploadState()
 
     val isSuccess: Boolean get() = this is Success
-
-    val isError: Boolean get() = this is Error
-
-    val isProgress: Boolean get() = this is Progress
 }
