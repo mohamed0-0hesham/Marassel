@@ -26,8 +26,6 @@ class FirebaseMessageDataSource @Inject constructor(
         private const val TYPING_PATH = "marassel/typing"
         private const val FIELD_TIMESTAMP = "timestamp"
         private const val INITIAL_LOAD_LIMIT = 100
-
-        const val UPLOAD_NOTIFICATION_ID = 1001
     }
 
     private val messagesRef get() = firebaseDatabase.getReference(MESSAGES_PATH)
@@ -55,8 +53,7 @@ class FirebaseMessageDataSource @Inject constructor(
 
             query.addValueEventListener(listener)
             awaitClose { query.removeEventListener(listener) }
-        }
-            .catch { emit(emptyList()) }
+        }.catch { emit(emptyList()) }
 
     suspend fun sendMessage(message: MessageEntity): Result<String> =
         runCatching {
@@ -109,7 +106,6 @@ class FirebaseMessageDataSource @Inject constructor(
                 .child(firebaseKey)
                 .removeValue()
                 .await()
-            Unit
         }
 
     fun observeTypingUsers(): Flow<Map<String, String>> = callbackFlow {
@@ -146,6 +142,5 @@ class FirebaseMessageDataSource @Inject constructor(
                 userTypingRef.removeValue().await()
                 userTypingRef.onDisconnect().cancel()
             }
-            Unit
         }
 }

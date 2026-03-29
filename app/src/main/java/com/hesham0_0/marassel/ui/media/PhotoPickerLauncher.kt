@@ -16,10 +16,6 @@ import androidx.compose.ui.platform.LocalContext
 
 const val MAX_MEDIA_ITEMS = 5
 
-//fun isPhotoPickerAvailable(): Boolean =
-//    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ||
-//            isPhotoPickerAvailable(context)
-
 fun Context.takePersistablePermissions(uris: List<Uri>) {
     uris.forEach { uri ->
         runCatching {
@@ -59,6 +55,7 @@ fun rememberPhotoPickerLauncher(
                     clipData != null -> (0 until clipData.itemCount)
                         .map { clipData.getItemAt(it).uri }
                         .take(MAX_MEDIA_ITEMS)
+
                     intent.data != null -> listOf(intent.data!!)
                     else -> emptyList()
                 }
@@ -72,10 +69,10 @@ fun rememberPhotoPickerLauncher(
 
     return remember(multiPickerLauncher, fallbackLauncher) {
         PhotoPickerLauncher(
-            context              = context,
-            mediaType            = mediaType,
-            multiPickerLauncher  = multiPickerLauncher,
-            fallbackLauncher     = fallbackLauncher,
+            context = context,
+            mediaType = mediaType,
+            multiPickerLauncher = multiPickerLauncher,
+            fallbackLauncher = fallbackLauncher,
         )
     }
 }
@@ -92,26 +89,11 @@ class PhotoPickerLauncher(
         } else {
             // Legacy fallback for API < 26
             val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                type     = "image/* video/*"
+                type = "image/* video/*"
                 putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
                 addCategory(Intent.CATEGORY_OPENABLE)
             }
             fallbackLauncher.launch(Intent.createChooser(intent, "Select media"))
-        }
-    }
-
-    fun launchImageOnly() {
-        if (isPhotoPickerAvailable()) {
-            multiPickerLauncher.launch(
-                PickVisualMediaRequest(PickVisualMedia.ImageOnly)
-            )
-        } else {
-            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                type     = "image/*"
-                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                addCategory(Intent.CATEGORY_OPENABLE)
-            }
-            fallbackLauncher.launch(Intent.createChooser(intent, "Select images"))
         }
     }
 }

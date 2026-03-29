@@ -1,6 +1,7 @@
 package com.hesham0_0.marassel.core.mvi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,6 +45,7 @@ abstract class BaseViewModel<S : UiState, E : UiEvent, F : UiEffect>(
             try {
                 block()
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 onError?.invoke(e)
             }
         }

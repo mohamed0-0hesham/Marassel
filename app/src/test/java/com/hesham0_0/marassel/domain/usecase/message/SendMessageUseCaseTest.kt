@@ -231,13 +231,13 @@ class SendMessageUseCaseTest {
     }
 
     @Test
-    fun `sendMedia entity has null mediaUrl immediately (populated after upload)`() = runTest {
+    fun `sendMedia entity has local uri in mediaUrl immediately`() = runTest {
         val result = useCase.sendMedia(
             "image/jpeg",
             1024L,
             "file://fake_cache_path.jpg"
         ) as SendMessageResult.Success
-        assertTrue(result.message.mediaUrl == null)
+        assertEquals("file://fake_cache_path.jpg", result.message.mediaUrl)
     }
 
     @Test

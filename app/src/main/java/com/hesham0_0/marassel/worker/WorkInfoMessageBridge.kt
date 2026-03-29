@@ -4,6 +4,7 @@ import androidx.lifecycle.asFlow
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.hesham0_0.marassel.domain.model.MessageStatus
+import com.hesham0_0.marassel.domain.model.isTerminal
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -29,22 +30,6 @@ class WorkInfoMessageBridge @Inject constructor(
             .filterNotNull()
             .distinctUntilChanged()
 
-    fun observeMessageStatusByTag(localId: String): Flow<MessageStatusUpdate> =
-        workManager
-            .getWorkInfosByTagLiveData(localId)
-            .asFlow()
-            .filterNotNull()
-            .map { workInfoList ->
-                // For a unique work chain, there should be at most one active request.
-                // Pick the most relevant one (running > enqueued > succeeded > failed)
-                workInfoList
-                    .sortedByDescending { it.state.ordinal }
-                    .firstOrNull()
-                    ?.toStatusUpdate(localId)
-            }
-            .filterNotNull()
-            .distinctUntilChanged()
-
     fun observeUploadProgress(workRequestId: UUID): Flow<Int?> =
         workManager
             .getWorkInfoByIdLiveData(workRequestId)
@@ -62,7 +47,7 @@ class WorkInfoMessageBridge @Inject constructor(
         val status = when (state) {
             WorkInfo.State.ENQUEUED,
             WorkInfo.State.BLOCKED,
-            WorkInfo.State.RUNNING  -> MessageStatus.PENDING
+            WorkInfo.State.RUNNING -> MessageStatus.PENDING
 
             WorkInfo.State.SUCCEEDED -> MessageStatus.SENT
 
@@ -77,10 +62,10 @@ class WorkInfoMessageBridge @Inject constructor(
         } else null
 
         return MessageStatusUpdate(
-            localId     = localId,
-            status      = status,
+            localId = localId,
+            status = status,
             firebaseKey = firebaseKey,
-            workState   = state,
+            workState = state,
         )
     }
 }
@@ -92,5 +77,5 @@ data class MessageStatusUpdate(
     val workState: WorkInfo.State,
 ) {
     val isTerminal: Boolean
-        get() = status == MessageStatus.SENT || status == MessageStatus.FAILED
+        get() = status.isTerminal
 }

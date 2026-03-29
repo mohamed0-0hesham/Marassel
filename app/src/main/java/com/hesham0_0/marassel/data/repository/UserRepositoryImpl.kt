@@ -45,7 +45,6 @@ class UserRepositoryImpl @Inject constructor(
                 user.email?.let    { prefs[emailKey(user.uid)]    = it }
                 user.photoUrl?.let { prefs[photoUrlKey(user.uid)] = it }
             }
-            Unit
         }
 
     override suspend fun getProfile(uid: String): Result<UserEntity?> =
@@ -70,7 +69,6 @@ class UserRepositoryImpl @Inject constructor(
                 prefs.remove(emailKey(uid))
                 prefs.remove(photoUrlKey(uid))
             }
-            Unit
         }
 
     // ── Private helper ────────────────────────────────────────────────────────

@@ -160,7 +160,6 @@ sealed interface ChatUiEvent : UiEvent {
     data object DismissError : ChatUiEvent
 
     data object LogoutClicked : ChatUiEvent
-    data object NavigateToAuth : ChatUiEffect
 }
 
 // ── Effects ───────────────────────────────────────────────────────────────────
@@ -177,4 +176,6 @@ sealed interface ChatUiEffect : UiEffect {
 
     /** Open the media picker */
     data object OpenMediaPicker : ChatUiEffect
+
+    data object NavigateToAuth : ChatUiEffect
 }

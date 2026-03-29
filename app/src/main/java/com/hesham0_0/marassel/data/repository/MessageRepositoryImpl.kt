@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -98,8 +97,8 @@ class MessageRepositoryImpl @Inject constructor(
     override suspend fun saveMessageLocally(message: MessageEntity): Result<Unit> =
         runCatching {
             val json = Json.encodeToString(message.toSerializable())
-            dataStore.edit { prefs -> prefs[pendingKey(message.localId)] = json }
-            Unit
+            dataStore.edit { prefs -> prefs[pendingKey(message.localId)] = json
+            }
         }
 
     override suspend fun updateMessageStatus(
@@ -118,7 +117,6 @@ class MessageRepositoryImpl @Inject constructor(
             )
             prefs[key] = Json.encodeToString(updated.toSerializable())
         }
-        Unit
     }
 
     override suspend fun getPendingMessages(): Result<List<MessageEntity>> =
@@ -134,7 +132,6 @@ class MessageRepositoryImpl @Inject constructor(
     override suspend fun clearPendingMessage(localId: String): Result<Unit> =
         runCatching {
             dataStore.edit { prefs -> prefs.remove(pendingKey(localId)) }
-            Unit
         }
 
     override suspend fun getLocalMessages(): Result<List<MessageEntity>> =

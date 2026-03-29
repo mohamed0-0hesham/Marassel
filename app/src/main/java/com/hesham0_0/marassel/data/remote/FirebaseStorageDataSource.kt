@@ -3,7 +3,6 @@ package com.hesham0_0.marassel.data.remote
 import android.net.Uri
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storageMetadata
-import com.hesham0_0.marassel.data.remote.FirebaseStorageDataSource.Companion.MAX_FILENAME_LENGTH
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -17,8 +16,8 @@ class FirebaseStorageDataSource @Inject constructor(
 ) {
 
     companion object {
-        private const val MEDIA_ROOT     = "chat_media"
-        private const val DEFAULT_MIME   = "application/octet-stream"
+        private const val MEDIA_ROOT = "chat_media"
+        private const val DEFAULT_MIME = "application/octet-stream"
         private const val MAX_FILENAME_LENGTH = 64
     }
 
@@ -30,19 +29,19 @@ class FirebaseStorageDataSource @Inject constructor(
 
         // Build storage path: chat_media/{localId}/{filename}_{timestamp}.{ext}
         val storagePath = buildStoragePath(
-            localId  = localId,
-            fileUri  = fileUri,
+            localId = localId,
+            fileUri = fileUri,
             mimeType = mimeType,
         )
 
         val storageRef = firebaseStorage.getReference(storagePath)
-        val metadata   = storageMetadata { contentType = mimeType.ifBlank { DEFAULT_MIME } }
+        val metadata = storageMetadata { contentType = mimeType.ifBlank { DEFAULT_MIME } }
         val uploadTask = storageRef.putFile(fileUri, metadata)
 
         uploadTask.addOnProgressListener { snapshot ->
-            val total       = snapshot.totalByteCount
+            val total = snapshot.totalByteCount
             val transferred = snapshot.bytesTransferred
-            val percent     = if (total > 0L) {
+            val percent = if (total > 0L) {
                 ((transferred.toDouble() / total.toDouble()) * 100.0)
                     .toInt()
                     .coerceIn(0, 100)
@@ -70,7 +69,7 @@ class FirebaseStorageDataSource @Inject constructor(
     }
 
     suspend fun deleteMediaForMessage(localId: String): Result<Unit> = runCatching {
-        val prefix  = "$MEDIA_ROOT/$localId"
+        val prefix = "$MEDIA_ROOT/$localId"
         val listRef = firebaseStorage.getReference(prefix)
 
         val listResult = listRef.listAll().await()
@@ -87,14 +86,14 @@ class FirebaseStorageDataSource @Inject constructor(
         fileUri: Uri,
         mimeType: String,
     ): String {
-        val rawFilename  = fileUri.lastPathSegment ?: "upload"
-        val extension    = extractExtension(rawFilename) ?: mimeTypeToExtension(mimeType)
-        val baseName     = rawFilename
+        val rawFilename = fileUri.lastPathSegment ?: "upload"
+        val extension = extractExtension(rawFilename) ?: mimeTypeToExtension(mimeType)
+        val baseName = rawFilename
             .substringBeforeLast(".")
             .replace(Regex("[^a-zA-Z0-9_-]"), "_")
             .take(MAX_FILENAME_LENGTH)
-        val timestamp    = System.currentTimeMillis()
-        val finalName    = "${baseName}_${timestamp}${if (extension != null) ".$extension" else ""}"
+        val timestamp = System.currentTimeMillis()
+        val finalName = "${baseName}_${timestamp}${if (extension != null) ".$extension" else ""}"
 
         return "$MEDIA_ROOT/$localId/$finalName"
     }
@@ -107,15 +106,15 @@ class FirebaseStorageDataSource @Inject constructor(
     }
 
     private fun mimeTypeToExtension(mimeType: String): String? = when (mimeType) {
-        "image/jpeg"      -> "jpg"
-        "image/png"       -> "png"
-        "image/gif"       -> "gif"
-        "image/webp"      -> "webp"
-        "video/mp4"       -> "mp4"
-        "video/3gpp"      -> "3gp"
+        "image/jpeg" -> "jpg"
+        "image/png" -> "png"
+        "image/gif" -> "gif"
+        "image/webp" -> "webp"
+        "video/mp4" -> "mp4"
+        "video/3gpp" -> "3gp"
         "video/quicktime" -> "mov"
-        "video/webm"      -> "webm"
-        else              -> null
+        "video/webm" -> "webm"
+        else -> null
     }
 }
 
@@ -134,8 +133,4 @@ sealed class UploadState {
     data class Error(val cause: Throwable) : UploadState()
 
     val isSuccess: Boolean get() = this is Success
-
-    val isError: Boolean get() = this is Error
-
-    val isProgress: Boolean get() = this is Progress
 }

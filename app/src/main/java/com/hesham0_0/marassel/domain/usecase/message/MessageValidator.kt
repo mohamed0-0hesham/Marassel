@@ -101,18 +101,22 @@ object MessageValidator {
      * Returns null for [ValidationResult.Valid].
      */
     fun toErrorMessage(result: ValidationResult): String? = when (result) {
-        is ValidationResult.Valid              -> null
-        is ValidationResult.BlankText          ->
+        is ValidationResult.Valid -> null
+        is ValidationResult.BlankText ->
             "Message cannot be empty"
-        is ValidationResult.TextTooLong        ->
+
+        is ValidationResult.TextTooLong ->
             "Message is too long (${result.length}/$MAX_TEXT_LENGTH characters)"
-        is ValidationResult.MediaTooLarge      -> {
+
+        is ValidationResult.MediaTooLarge -> {
             val mb = result.bytes / (1024 * 1024)
             "File is too large (${mb}MB). Maximum size is ${MAX_MEDIA_BYTES / (1024 * 1024)}MB"
         }
+
         is ValidationResult.UnsupportedMediaType ->
             "Unsupported file type: ${result.mimeType}"
-        is ValidationResult.EmptyMediaFile     ->
+
+        is ValidationResult.EmptyMediaFile ->
             "The selected file appears to be empty"
     }
 }

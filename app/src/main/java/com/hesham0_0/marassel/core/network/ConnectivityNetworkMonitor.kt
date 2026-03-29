@@ -24,7 +24,7 @@ import javax.inject.Singleton
  * [ConnectivityManager] uses a callback-based API. [callbackFlow] bridges
  * the callback world into coroutines by:
  * 1. Registering the callback when the first collector subscribes (cold start)
- * 2. Emitting values via [trySend] inside callbacks
+ * 2. Emitting values via trySend inside callbacks
  * 3. Unregistering the callback via [awaitClose] when all collectors cancel
  *
  * This ensures we never leak a registered [NetworkCallback].
@@ -124,9 +124,6 @@ class ConnectivityNetworkMonitor @Inject constructor(
         // The callback will filter down to VALIDATED ones.
         val request = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-            .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
             .build()
 
         connectivityManager.registerNetworkCallback(request, callback)
@@ -135,7 +132,7 @@ class ConnectivityNetworkMonitor @Inject constructor(
 
         // Check current connectivity synchronously before any callbacks fire.
         // This ensures the first collector gets the current state right away
-        // rather than waiting for the next network change.
+        // rather than waiting for the next network change event.
         val currentlyOnline = connectivityManager.isCurrentlyOnline()
         trySend(currentlyOnline)
 

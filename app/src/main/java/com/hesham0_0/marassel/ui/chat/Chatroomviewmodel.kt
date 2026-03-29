@@ -1,10 +1,9 @@
 package com.hesham0_0.marassel.ui.chat
 
-import android.content.Context
 import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.lifecycle.viewModelScope
 import com.hesham0_0.marassel.core.mvi.BaseViewModel
+import com.hesham0_0.marassel.data.repository.MediaFileCache
 import com.hesham0_0.marassel.domain.model.MessageType
 import com.hesham0_0.marassel.domain.model.UserEntity
 import com.hesham0_0.marassel.domain.repository.AuthRepository
@@ -24,22 +23,19 @@ import com.hesham0_0.marassel.worker.MessageSendOrchestrator
 import com.hesham0_0.marassel.worker.MessageStatusUpdate
 import com.hesham0_0.marassel.worker.WorkInfoMessageBridge
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import androidx.core.net.toUri
-import android.webkit.MimeTypeMap
-import java.io.File
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class ChatRoomViewModel @Inject constructor(
@@ -54,12 +50,12 @@ class ChatRoomViewModel @Inject constructor(
     private val orchestrator: MessageSendOrchestrator,
     private val workInfoBridge: WorkInfoMessageBridge,
     private val authRepository: AuthRepository,
-    @ApplicationContext private val context: Context,
+    private val mediaFileCache: MediaFileCache,
 ) : BaseViewModel<ChatUiState, ChatUiEvent, ChatUiEffect>(ChatUiState()) {
 
     private val activeWorkJobs = mutableMapOf<String, Job>()
     private val uploadProgressMap = mutableMapOf<String, Int?>()
-    private var oldestTimestamp: Long = Long.MAX_VALUE
+    private val oldestTimestamp = AtomicLong(Long.MAX_VALUE)
 
     private var typingJob: Job? = null
 
@@ -82,7 +78,7 @@ class ChatRoomViewModel @Inject constructor(
                 val models = items.map { item -> item.toUiModel(user) }
 
                 models.minOfOrNull { it.timestamp }?.let { ts ->
-                    if (ts < oldestTimestamp) oldestTimestamp = ts
+                    oldestTimestamp.updateAndGet { minOf(it, ts) }
                 }
 
                 val oldMessages = currentState.messages
@@ -174,7 +170,7 @@ class ChatRoomViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.signOut()
             setEffect(
-                ChatUiEvent.NavigateToAuth
+                ChatUiEffect.NavigateToAuth
             )
         }
     }
@@ -244,25 +240,14 @@ class ChatRoomViewModel @Inject constructor(
 
         launch {
             uris.forEach { uri ->
-                val (cachedUri, size, mimeType) = withContext(Dispatchers.IO) {
-                    val resolvedMimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                val mediaInfo = mediaFileCache.cacheMediaFile(uri)
 
-                    val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(resolvedMimeType) ?: "tmp"
-                    val cachedFile = File(context.cacheDir, "upload_${UUID.randomUUID()}.$extension")
-
-                    try {
-                        context.contentResolver.openInputStream(uri)?.use { input ->
-                            cachedFile.outputStream().use { output ->
-                                input.copyTo(output)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-
-                    val finalSize = if (cachedFile.exists() && cachedFile.length() > 0) cachedFile.length() else 1L
-                    Triple(Uri.fromFile(cachedFile), finalSize, resolvedMimeType)
+                if (mediaInfo == null) {
+                    setEffect(ChatUiEffect.ShowSnackbar("Failed to prepare media file"))
+                    return@forEach
                 }
+
+                val (cachedUri, size, mimeType) = mediaInfo
 
                 when (val result = sendMessageUseCase.sendMedia(
                     mimeType = mimeType,
@@ -336,7 +321,12 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
-    private fun onDeleteMessage(localId: String, firebaseKey: String?, senderUid: String, type: MessageType) {
+    private fun onDeleteMessage(
+        localId: String,
+        firebaseKey: String?,
+        senderUid: String,
+        type: MessageType
+    ) {
         setState { copy(selectedMessageLocalId = null) }
         launch {
             val result = deleteMessageUseCase(
@@ -367,7 +357,7 @@ class ChatRoomViewModel @Inject constructor(
 
         launch {
             when (val result = loadOlderMessagesUseCase(
-                beforeTimestamp = oldestTimestamp,
+                beforeTimestamp = oldestTimestamp.get(),
                 limit = LoadOlderMessagesUseCase.DEFAULT_PAGE_SIZE,
             )) {
                 is com.hesham0_0.marassel.domain.usecase.message.LoadOlderResult.Success -> {
@@ -386,7 +376,7 @@ class ChatRoomViewModel @Inject constructor(
                     }
 
                     models.minOfOrNull { it.timestamp }?.let { ts ->
-                        if (ts < oldestTimestamp) oldestTimestamp = ts
+                        oldestTimestamp.updateAndGet { minOf(it, ts) }
                     }
 
                     setState {
@@ -422,6 +412,7 @@ class ChatRoomViewModel @Inject constructor(
 
                 if (update.isTerminal) {
                     activeWorkJobs.remove(localId)?.cancel()
+                    uploadProgressMap.remove(localId)
                 }
             }
             .launchIn(viewModelScope)
@@ -459,7 +450,10 @@ class ChatRoomViewModel @Inject constructor(
 
             val showTimestamp = prev == null || !isSameDay(prev.timestamp, model.timestamp)
             val showSenderInfo = prev == null || prev.senderUid != model.senderUid || showTimestamp
-            val isLastInBurst = next == null || next.senderUid != model.senderUid || !isSameDay(model.timestamp, next.timestamp)
+            val isLastInBurst = next == null || next.senderUid != model.senderUid || !isSameDay(
+                model.timestamp,
+                next.timestamp
+            )
 
             model.copy(
                 showSenderInfo = !model.isFromCurrentUser && showSenderInfo,
@@ -480,26 +474,22 @@ class ChatRoomViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         typingJob?.cancel()
-        launch { setTypingStatusUseCase(isTyping = false) }
+        // Note: We cannot call setTypingStatusUseCase(isTyping = false) here 
+        // because viewModelScope is already cancelled. We rely on Firebase's 
+        // onDisconnect() rules or timeout to clean up the typing status.
         activeWorkJobs.values.forEach { it.cancel() }
         activeWorkJobs.clear()
     }
 }
 
-private val timeFormatterThreadLocal = object : ThreadLocal<SimpleDateFormat>() {
-    override fun initialValue() = SimpleDateFormat("h:mm a", Locale.getDefault())
-}
-
-private val dayFormatterThreadLocal = object : ThreadLocal<SimpleDateFormat>() {
-    override fun initialValue() = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
-}
-
 private fun formatTime(timestamp: Long): String {
-    return timeFormatterThreadLocal.get()?.format(Date(timestamp)) ?: ""
+    val formatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
+    return Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).format(formatter)
 }
 
 private fun formatDay(timestamp: Long): String {
-    return dayFormatterThreadLocal.get()?.format(Date(timestamp)) ?: ""
+    val formatter = DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.getDefault())
+    return Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).format(formatter)
 }
 
 private fun MessageUiItem.toUiModel(currentUser: UserEntity?): MessageUiModel {

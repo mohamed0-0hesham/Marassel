@@ -85,12 +85,12 @@ class FirebaseAuthRepository @Inject constructor(
             ?: AuthProvider.EMAIL_PASSWORD
 
         return AuthUser(
-            uid              = uid,
-            email            = email,
-            displayName      = displayName,
-            photoUrl         = photoUrl?.toString(),
-            isEmailVerified  = isEmailVerified,
-            provider         = provider,
+            uid = uid,
+            email = email,
+            displayName = displayName,
+            photoUrl = photoUrl?.toString(),
+            isEmailVerified = isEmailVerified,
+            provider = provider,
         )
     }
 }

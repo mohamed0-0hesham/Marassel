@@ -21,9 +21,9 @@ class SendMessageUseCase @Inject constructor(
 
         return send { uid, displayName ->
             MessageEntity.createTextMessage(
-                senderUid  = uid,
+                senderUid = uid,
                 senderName = displayName,
-                text       = text,
+                text = text,
             )
         }
     }
@@ -40,9 +40,9 @@ class SendMessageUseCase @Inject constructor(
 
         return send { uid, displayName ->
             MessageEntity.createMediaMessage(
-                senderUid  = uid,
+                senderUid = uid,
                 senderName = displayName,
-                mediaType  = mimeType,
+                mediaType = mimeType,
                 localMediaUri = localMediaUri
             )
         }

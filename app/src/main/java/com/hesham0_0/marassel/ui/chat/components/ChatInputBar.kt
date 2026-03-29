@@ -9,20 +9,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,14 +31,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import com.hesham0_0.marassel.ui.media.MediaPreviewRow
 import com.hesham0_0.marassel.ui.theme.ChatSizes
 import com.hesham0_0.marassel.ui.theme.InputShape
 import com.hesham0_0.marassel.ui.theme.MarasselTheme
@@ -93,7 +86,7 @@ fun ChatInputBar(
             ) {
                 MediaPreviewRow(
                     uris = selectedMediaUris,
-                    onRemoveMedia = onRemoveMedia,
+                    onRemoveUri = onRemoveMedia,
                 )
             }
 
@@ -159,58 +152,6 @@ fun ChatInputBar(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun MediaPreviewRow(
-    uris: List<Uri>,
-    onRemoveMedia: (Uri) -> Unit,
-) {
-    LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(end = 8.dp),
-    ) {
-        items(items = uris, key = { it.toString() }) { uri ->
-            MediaThumbnailChip(uri = uri, onRemove = { onRemoveMedia(uri) })
-        }
-    }
-}
-
-@Composable
-private fun MediaThumbnailChip(uri: Uri, onRemove: () -> Unit) {
-    Box(modifier = Modifier.size(ChatSizes.MediaThumbnailSize)) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(uri)
-                .crossfade(true)
-                .build(),
-            contentDescription = "Selected media",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(ChatSizes.MediaThumbnailSize)
-                .clip(MaterialTheme.shapes.small),
-        )
-
-        Box(
-            modifier = Modifier
-                .size(18.dp)
-                .align(Alignment.TopEnd)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
-                .clickable(onClick = onRemove),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Remove",
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(12.dp),
-            )
         }
     }
 }

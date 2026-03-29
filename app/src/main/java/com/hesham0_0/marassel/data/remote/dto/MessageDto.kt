@@ -3,7 +3,6 @@ package com.hesham0_0.marassel.data.remote.dto
 import com.google.firebase.database.IgnoreExtraProperties
 import com.google.firebase.database.PropertyName
 
-
 @IgnoreExtraProperties
 data class MessageDto(
 
@@ -42,16 +41,4 @@ data class MessageDto(
     @get:PropertyName("reply_to_id")
     @set:PropertyName("reply_to_id")
     var replyToId: String? = null,
-) {
-    constructor() : this(
-        senderUid  = null,
-        senderName = null,
-        text       = null,
-        mediaUrl   = null,
-        mediaType  = null,
-        timestamp  = null,
-        type       = null,
-        localId    = null,
-        replyToId  = null,
-    )
-}
+)

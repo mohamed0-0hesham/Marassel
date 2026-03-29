@@ -69,11 +69,12 @@ class RetryMessageReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val localId = intent.getStringExtra(EXTRA_LOCAL_ID) ?: return
 
-        val launchIntent = Intent(context, com.hesham0_0.marassel.ui.MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra(EXTRA_LOCAL_ID, localId)
-            action = ACTION_RETRY_MESSAGE
-        }
+        val launchIntent =
+            Intent(context, com.hesham0_0.marassel.ui.MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra(EXTRA_LOCAL_ID, localId)
+                action = ACTION_RETRY_MESSAGE
+            }
         context.startActivity(launchIntent)
     }
 

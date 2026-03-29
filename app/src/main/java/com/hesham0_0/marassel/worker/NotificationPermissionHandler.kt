@@ -53,7 +53,7 @@ fun NotificationPermissionHandler(
             // If the system dialog was shown and denied, we can't distinguish
             // "denied once" from "permanently denied" without shouldShowRequestPermissionRationale.
             // Since we're in Compose we check via a flag set before launching.
-            isPermanentlyDenied = !isGranted
+            isPermanentlyDenied = true
         }
         onPermissionResult(isGranted)
     }
@@ -91,8 +91,8 @@ private fun NotificationPermissionRationaleDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title   = { Text("Stay updated on your messages") },
-        text    = {
+        title = { Text("Stay updated on your messages") },
+        text = {
             Text(
                 "Enable notifications so you're alerted when a message " +
                         "fails to send or when an upload completes in the background."
@@ -114,8 +114,8 @@ private fun NotificationPermissionPermanentlyDeniedDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title   = { Text("Notifications are disabled") },
-        text    = {
+        title = { Text("Notifications are disabled") },
+        text = {
             Text(
                 "To receive alerts for failed messages and uploads, " +
                         "enable notifications for Marassel in your device settings."
