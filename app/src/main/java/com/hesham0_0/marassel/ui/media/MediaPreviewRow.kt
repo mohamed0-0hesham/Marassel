@@ -30,12 +30,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import coil.compose.SubcomposeAsyncImage
 import coil.decode.VideoFrameDecoder
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
 import com.hesham0_0.marassel.ui.theme.ChatSizes
+import com.hesham0_0.marassel.ui.theme.MarasselTheme
 import com.hesham0_0.marassel.ui.theme.MediaThumbnailShape
 
 @Composable
@@ -159,5 +162,33 @@ private fun MediaThumbnailChip(
                 modifier           = Modifier.size(13.dp),
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MediaPreviewRowPreview() {
+    val sampleUris = listOf(
+        "content://media/external/images/media/1.jpg".toUri(),
+        "content://media/external/video/media/2.mp4".toUri(),
+        "content://media/external/images/media/3.png".toUri()
+    )
+    
+    MarasselTheme {
+        MediaPreviewRow(
+            uris = sampleUris,
+            onRemoveUri = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MediaPreviewRowEmptyPreview() {
+    MarasselTheme {
+        MediaPreviewRow(
+            uris = emptyList(),
+            onRemoveUri = {}
+        )
     }
 }

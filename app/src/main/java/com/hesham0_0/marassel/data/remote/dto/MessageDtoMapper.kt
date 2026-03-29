@@ -45,14 +45,4 @@ object MessageDtoMapper {
         localId = entity.localId,
         replyToId = entity.replyToId,
     )
-
-    fun isValid(entity: MessageEntity): Boolean {
-        if (entity.senderUid == UNKNOWN_UID) return false
-        if (entity.timestamp == 0L) return false
-        return when (entity.type) {
-            MessageType.TEXT -> !entity.text.isNullOrBlank()
-            MessageType.IMAGE,
-            MessageType.VIDEO -> !entity.mediaUrl.isNullOrBlank()
-        }
-    }
 }
