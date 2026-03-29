@@ -480,7 +480,6 @@ class ChatRoomViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         typingJob?.cancel()
-        launch { setTypingStatusUseCase(isTyping = false) }
         activeWorkJobs.values.forEach { it.cancel() }
         activeWorkJobs.clear()
     }
