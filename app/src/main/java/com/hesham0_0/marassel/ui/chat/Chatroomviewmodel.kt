@@ -28,8 +28,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
@@ -481,20 +482,14 @@ class ChatRoomViewModel @Inject constructor(
     }
 }
 
-private val timeFormatterThreadLocal = object : ThreadLocal<SimpleDateFormat>() {
-    override fun initialValue() = SimpleDateFormat("h:mm a", Locale.getDefault())
-}
-
-private val dayFormatterThreadLocal = object : ThreadLocal<SimpleDateFormat>() {
-    override fun initialValue() = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
-}
-
 private fun formatTime(timestamp: Long): String {
-    return timeFormatterThreadLocal.get()?.format(Date(timestamp)) ?: ""
+    val formatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
+    return Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).format(formatter)
 }
 
 private fun formatDay(timestamp: Long): String {
-    return dayFormatterThreadLocal.get()?.format(Date(timestamp)) ?: ""
+    val formatter = DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.getDefault())
+    return Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).format(formatter)
 }
 
 private fun MessageUiItem.toUiModel(currentUser: UserEntity?): MessageUiModel {
