@@ -4,6 +4,7 @@ import androidx.lifecycle.asFlow
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.hesham0_0.marassel.domain.model.MessageStatus
+import com.hesham0_0.marassel.domain.model.isTerminal
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -92,5 +93,5 @@ data class MessageStatusUpdate(
     val workState: WorkInfo.State,
 ) {
     val isTerminal: Boolean
-        get() = status == MessageStatus.SENT || status == MessageStatus.FAILED
+        get() = status.isTerminal
 }
