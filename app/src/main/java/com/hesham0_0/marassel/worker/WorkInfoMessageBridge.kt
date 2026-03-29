@@ -30,22 +30,6 @@ class WorkInfoMessageBridge @Inject constructor(
             .filterNotNull()
             .distinctUntilChanged()
 
-    fun observeMessageStatusByTag(localId: String): Flow<MessageStatusUpdate> =
-        workManager
-            .getWorkInfosByTagLiveData(localId)
-            .asFlow()
-            .filterNotNull()
-            .map { workInfoList ->
-                // For a unique work chain, there should be at most one active request.
-                // Pick the most relevant one (running > enqueued > succeeded > failed)
-                workInfoList
-                    .sortedByDescending { it.state.ordinal }
-                    .firstOrNull()
-                    ?.toStatusUpdate(localId)
-            }
-            .filterNotNull()
-            .distinctUntilChanged()
-
     fun observeUploadProgress(workRequestId: UUID): Flow<Int?> =
         workManager
             .getWorkInfoByIdLiveData(workRequestId)
